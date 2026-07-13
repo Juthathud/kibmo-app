@@ -1,0 +1,11 @@
+backend/__pycache__/
+backend/**/__pycache__/
+backend/data.db
+backend/uploads/
+
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+.DS_Store

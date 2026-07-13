@@ -1,0 +1,446 @@
+.authScreen {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 36px 20px 40px;
+  text-align: left;
+}
+
+.authBrand { display: flex; flex-direction: column; align-items: flex-start; }
+.authLogo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 4px 14px rgba(236, 30, 121, 0.35);
+  margin-bottom: 12px;
+}
+.authAppName { font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+.authAppName span { color: var(--pink); }
+.authTagline { color: var(--muted); font-size: 0.85rem; margin: 6px 0 28px; }
+
+.authCard { background: transparent; border: none; box-shadow: none; padding: 0; }
+.authCard h2 { font-size: 1.25rem; text-align: center; margin: 4px 0 20px; }
+
+.authBackBtn {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--muted);
+  padding: 0 0 18px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: block;
+}
+.authBackBtn:hover { color: var(--pink); }
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.fieldLabel input, .fieldLabel select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: #fffdfb;
+}
+.fieldLabel input:focus, .fieldLabel select:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px var(--pink-light);
+}
+
+.phoneField {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 4px 2px 14px;
+  margin-bottom: 18px;
+  background: #fffdfb;
+}
+.phoneField:focus-within { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-light); }
+.phoneField .phonePrefix {
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  padding-right: 10px;
+}
+.phoneField input {
+  border: none;
+  outline: none;
+  margin: 0;
+  padding: 10px 8px;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.btnPink {
+  display: block;
+  width: 100%;
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  box-shadow: 0 4px 14px rgba(236, 30, 121, 0.3);
+  padding: 13px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.btnPink:disabled { opacity: 0.7; }
+
+.btnOutlinePink, .btnOutlineDark {
+  display: block;
+  width: 100%;
+  background: #fff;
+  border-radius: 999px;
+  padding: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.btnOutlinePink { color: var(--pink); border: 1.5px solid var(--pink); }
+.btnOutlineDark { color: var(--ink); border: 1.5px solid var(--ink); }
+.btnOutlinePink:hover, .btnOutlineDark:hover { background: var(--pink-light); }
+
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 22px 0;
+}
+.authDivider::before, .authDivider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.err { color: var(--danger); font-size: 0.85rem; min-height: 1em; margin-top: 8px; font-weight: 600; }
+
+.otpHint { font-size: 0.9rem; color: var(--ink); line-height: 1.6; margin-bottom: 6px; }
+.otpRef { text-align: right; color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+
+.otpBoxes { display: flex; gap: 10px; margin-bottom: 18px; }
+.otpBoxes input {
+  width: 100%;
+  aspect-ratio: 1;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+}
+.otpBoxes input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-light); }
+.otpBoxes input.filled { border-color: var(--pink); color: var(--pink); }
+
+.otpResend { color: var(--pink); font-size: 0.9rem; font-weight: 600; }
+.otpResendBtn {
+  background: none;
+  border: none;
+  color: var(--pink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.devHint {
+  margin-top: 24px;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px dashed #d97706;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #92400e;
+}
+
+.empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+
+/* ---------- onboarding wizard (worker profile steps) ---------- */
+
+.wizardScreen {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-bottom: 100px;
+  text-align: left;
+}
+
+.wizardHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.wizardHeader button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: var(--ink);
+  padding: 0;
+  line-height: 1;
+}
+.wizardHeader .wizardSkipTop { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-left: auto; }
+.wizardHeader h2 { margin: 0; font-size: 1.05rem; }
+
+.wizardBody { padding: 20px; }
+
+.wizardBanner {
+  background: #fbbf24;
+  color: #1f1f1f;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 10px 16px;
+}
+
+.fieldRequired { text-align: center; font-weight: 700; margin-bottom: 10px; }
+.fieldRequired .req { color: var(--danger); }
+
+.photoPicker {
+  display: block;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #f1f1f1;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+.photoPicker img { width: 100%; height: 100%; object-fit: cover; }
+.photoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: #c7c7c7;
+}
+.photoPicker .photoCam {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.photoPicker input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.wizardSectionLabel {
+  background: #ececec;
+  padding: 10px 14px;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  margin: 20px -20px 14px;
+}
+.wizardSectionLabel .req { color: var(--danger); }
+.wizardSectionLabel .selectAll { color: var(--pink); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+
+.checkRow, .radioRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f1f1;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.categoryGroup { background: #f7f7f7; margin: 0 -20px; padding: 0 20px; }
+.categoryGroup .checkRow { background: #f7f7f7; }
+.categorySubs { background: #fff; }
+.categorySubs .checkRow { padding-left: 10px; }
+.chev { font-size: 0.7rem; color: var(--muted); margin-left: 6px; }
+.checkRow input, .radioRow input { width: 18px; height: 18px; accent-color: var(--pink); }
+
+.pillGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.pillCard {
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.pillCard.selected { border-color: var(--pink); background: var(--pink-light); color: var(--pink-dark); }
+
+.textField {
+  display: block;
+  margin-bottom: 16px;
+}
+.textField label { font-size: 0.9rem; color: var(--muted); display: block; margin-bottom: 6px; }
+.textField input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  font-size: 1rem;
+  outline: none;
+}
+.textField input:focus { border-color: var(--pink); }
+
+.timeRow { display: flex; align-items: center; gap: 14px; }
+.timeRow .textField { flex: 1; }
+
+.wizardFooter {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 20px 20px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.wizardFooter .btnPink { flex: 1; }
+.wizardSkip {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 8px;
+  display: block;
+  margin: 0 auto;
+}
+
+.uploadBox {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 24px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.uploadBox.done { border-color: var(--pink); color: var(--pink-dark); }
+.uploadBox img { max-height: 120px; display: block; margin: 0 auto 10px; border-radius: 8px; }
+.uploadBox input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.searchBox input { border: none; outline: none; width: 100%; font-size: 0.95rem; }
+
+.resumePromptIcon { font-size: 3rem; text-align: center; margin-bottom: 10px; }
+.resumePromptTitle { text-align: center; color: #16a34a; font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; }
+.resumePromptText { text-align: center; color: var(--ink); font-size: 0.95rem; line-height: 1.6; margin-bottom: 22px; }
+
+/* ---------- employer dashboard ---------- */
+
+.employerScreen { max-width: 520px; margin: 0 auto; padding: 20px 16px 60px; }
+
+.employerTopBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.employerName { font-weight: 700; font-size: 1.05rem; }
+.employerRoleTag { color: var(--pink); font-size: 0.8rem; font-weight: 600; }
+.employerTopBar .btnOutlineDark.small { width: auto; padding: 7px 14px; font-size: 0.8rem; margin-bottom: 0; }
+
+.employerCard {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.employerCard h3 { margin: 0 0 16px; font-size: 1.05rem; }
+
+.employerJobsSection h3 { font-size: 1.05rem; margin-bottom: 12px; }
+
+.jobCard {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--pink);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #fffdfb;
+}
+.jobCardTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.jobCardCategory { font-weight: 700; }
+.jobCardMeta { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+
+.jobStatusBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.jobStatus-open { background: #dbeafe; color: #1d4ed8; }
+.jobStatus-staffed { background: #fef3c7; color: #92400e; }
+.jobStatus-in_progress { background: var(--pink-light); color: var(--pink-dark); }
+.jobStatus-completed { background: #dcfce7; color: #166534; }
+
+.jobMatchTag {
+  display: inline-block;
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
+.jobCardActions { display: flex; gap: 10px; margin-top: 12px; }
+.jobCardActions .btnPink.small, .jobCardActions .btnOutlineDark.small { flex: 1; }
+
+.btnPink.small, .btnOutlineDark.small {
+  display: block;
+  width: auto;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  margin-bottom: 0;
+}

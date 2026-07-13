@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: kibmoo-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  - type: web
+    name: kibmoo-frontend
+    env: static
+    buildCommand: npm --prefix frontend ci && npm --prefix frontend run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE
+        value: https://kibmoo-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

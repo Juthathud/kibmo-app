@@ -1,0 +1,20 @@
+:root {
+  --pink: #ec1e79;
+  --pink-dark: #c2185b;
+  --pink-light: #fde3ef;
+  --ink: #17242e;
+  --muted: #64748b;
+  --border: #dbe4ec;
+  --danger: #dc2626;
+
+  font: 16px/1.5 "Segoe UI", "Noto Sans Thai", system-ui, sans-serif;
+  color: var(--ink);
+  background: #fff;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+#root { min-height: 100svh; }
+
+button { font-family: inherit; cursor: pointer; }
+input { font-family: inherit; }

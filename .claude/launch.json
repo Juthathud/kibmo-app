@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kibmoo-backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["backend/app.py"],
+      "port": 5001
+    },
+    {
+      "name": "kibmoo-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}
