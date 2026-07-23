@@ -186,14 +186,20 @@ def respond_to_job():
 def checkin(match_id):
     data = request.get_json(force=True)
     lat, lng = data.get("lat"), data.get("lng")
+    worker_id = data.get("worker_id")
     if lat is None or lng is None:
         return jsonify(error="ไม่พบตำแหน่ง GPS"), 400
+    if worker_id is None:
+        return jsonify(error="กรุณาระบุ worker_id"), 400
 
     conn = get_db()
     match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match or match["status"] != "accepted":
         conn.close()
         return jsonify(error="ไม่พบการจับคู่งานนี้"), 404
+    if match["worker_id"] != worker_id:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์เช็คอินงานนี้"), 403
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
     if job["status"] not in ("staffed", "in_progress"):
         conn.close()
@@ -254,6 +260,13 @@ def rate_match(match_id):
         return jsonify(error="ให้คะแนนได้หลังงานจบแล้วเท่านั้น"), 400
 
     if rater == "employer":
+        employer_id = data.get("employer_id")
+        if employer_id is None:
+            conn.close()
+            return jsonify(error="กรุณาระบุ employer_id"), 400
+        if job["employer_id"] != employer_id:
+            conn.close()
+            return jsonify(error="คุณไม่มีสิทธิ์ให้คะแนนงานนี้"), 403
         if match["rating_by_employer"] is not None:
             conn.close()
             return jsonify(error="ให้คะแนนไปแล้ว"), 400
@@ -263,6 +276,13 @@ def rate_match(match_id):
         )
         rated_user_id = match["worker_id"]
     else:
+        worker_id = data.get("worker_id")
+        if worker_id is None:
+            conn.close()
+            return jsonify(error="กรุณาระบุ worker_id"), 400
+        if match["worker_id"] != worker_id:
+            conn.close()
+            return jsonify(error="คุณไม่มีสิทธิ์ให้คะแนนงานนี้"), 403
         if match["rating_by_worker"] is not None:
             conn.close()
             return jsonify(error="ให้คะแนนไปแล้ว"), 400
@@ -288,6 +308,11 @@ def rate_match(match_id):
 
 @bp.route("/api/matches/<int:match_id>/mark-paid", methods=["POST"])
 def mark_paid(match_id):
+    data = request.get_json(silent=True) or {}
+    employer_id = data.get("employer_id")
+    if employer_id is None:
+        return jsonify(error="กรุณาระบุ employer_id"), 400
+
     conn = get_db()
     match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match or match["status"] != "accepted":
@@ -297,6 +322,9 @@ def mark_paid(match_id):
         conn.close()
         return jsonify(error="จ่ายเงินไปแล้ว"), 400
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
+    if job["employer_id"] != employer_id:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์จ่ายเงินงานนี้"), 403
     if job["status"] != "completed":
         conn.close()
         return jsonify(error="จ่ายเงินได้หลังงานจบแล้วเท่านั้น"), 400

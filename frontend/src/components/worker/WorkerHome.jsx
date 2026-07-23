@@ -3,7 +3,7 @@ import { api } from "../../api";
 import JobCard from "../JobCard";
 import RatingStars from "../RatingStars";
 
-function AcceptedJobActions({ job, onChanged }) {
+function AcceptedJobActions({ job, workerId, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [rating, setRating] = useState(false);
   const [err, setErr] = useState("");
@@ -23,6 +23,7 @@ function AcceptedJobActions({ job, onChanged }) {
           await api("POST", `/api/matches/${job.match_id}/checkin`, {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
+            worker_id: workerId,
           });
           onChanged();
         } catch (e) {
@@ -42,7 +43,7 @@ function AcceptedJobActions({ job, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${job.match_id}/rate`, { rater: "worker", rating: value });
+      await api("POST", `/api/matches/${job.match_id}/rate`, { rater: "worker", rating: value, worker_id: workerId });
       setRating(false);
       onChanged();
     } catch (e) {
@@ -152,7 +153,7 @@ export default function WorkerHome({ user, onLogout }) {
           <JobCard
             key={job.id}
             job={job}
-            actions={<AcceptedJobActions job={job} onChanged={load} />}
+            actions={<AcceptedJobActions job={job} workerId={user.id} onChanged={load} />}
           />
         ))}
       </div>

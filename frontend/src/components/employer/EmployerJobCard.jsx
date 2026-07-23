@@ -51,7 +51,7 @@ function WorkerProfile({ workerId }) {
   );
 }
 
-function WorkerRow({ w, jobCompleted, onChanged }) {
+function WorkerRow({ w, jobCompleted, employerId, onChanged }) {
   const [showProfile, setShowProfile] = useState(false);
   const [rating, setRating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -61,7 +61,7 @@ function WorkerRow({ w, jobCompleted, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${w.match_id}/mark-paid`);
+      await api("POST", `/api/matches/${w.match_id}/mark-paid`, { employer_id: employerId });
       onChanged();
     } catch (e) {
       setErr(e.message);
@@ -74,7 +74,7 @@ function WorkerRow({ w, jobCompleted, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value });
+      await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value, employer_id: employerId });
       setRating(false);
       onChanged();
     } catch (e) {
@@ -252,6 +252,7 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
                   key={w.id}
                   w={w}
                   jobCompleted={job.status === "completed"}
+                  employerId={employerId}
                   onChanged={() => {
                     loadWorkers();
                     onChanged();
