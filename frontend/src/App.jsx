@@ -11,7 +11,7 @@ import OnboardingWizard from "./components/onboarding/OnboardingWizard";
 const STORAGE_KEY = "kibmoo_user";
 
 function needsOnboarding(u) {
-  return u.role === "worker" && !u.onboarding_complete;
+  return (u.role === "worker" || u.role === "both") && !u.onboarding_complete;
 }
 
 function loadStoredUser() {

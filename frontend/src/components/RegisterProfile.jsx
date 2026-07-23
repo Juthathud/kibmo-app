@@ -33,6 +33,7 @@ export default function RegisterProfile({ phone, onDone, onBack }) {
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="employer">นายจ้าง</option>
             <option value="worker">ลูกจ้าง</option>
+            <option value="both">ทั้งสอง (นายจ้าง + ลูกจ้าง)</option>
           </select>
         </label>
         <label className="fieldLabel">

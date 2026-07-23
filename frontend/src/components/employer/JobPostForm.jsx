@@ -19,11 +19,36 @@ const initialForm = {
   gps_auto_checkin: false,
   item_list: "",
   budget: "",
+  lat: null,
+  lng: null,
 };
 
-export default function JobPostForm({ employerId, onPosted }) {
-  const [form, setForm] = useState(initialForm);
+function formFromJob(job) {
+  return {
+    job_type: job.job_type,
+    category: job.category,
+    pay_type: job.pay_type,
+    rate: job.rate,
+    headcount: job.headcount,
+    days: job.days,
+    location: job.location,
+    job_date: job.job_date,
+    gps_auto_checkin: !!job.gps_auto_checkin,
+    item_list: job.item_list || "",
+    budget: job.budget || "",
+    lat: job.lat,
+    lng: job.lng,
+  };
+}
+
+// Used both to post a brand-new job and (when `job`/`onSaved` are given) to
+// edit one that's still 'open' — same fields, submit just switches between
+// POST /api/jobs and PATCH /api/jobs/<id>.
+export default function JobPostForm({ employerId, onPosted, job, onSaved, onCancelEdit }) {
+  const isEditing = !!job;
+  const [form, setForm] = useState(isEditing ? formFromJob(job) : initialForm);
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [err, setErr] = useState("");
 
   const isProcurement = form.job_type === "procurement";
@@ -32,27 +57,54 @@ export default function JobPostForm({ employerId, onPosted }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setErr("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        set("lat", pos.coords.latitude);
+        set("lng", pos.coords.longitude);
+        setLocating(false);
+      },
+      () => {
+        setErr("ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง");
+        setLocating(false);
+      }
+    );
+  }
+
   async function submit(e) {
     e.preventDefault();
     setSaving(true);
     setErr("");
+    const payload = {
+      employer_id: employerId,
+      job_type: form.job_type,
+      category: form.category,
+      pay_type: form.pay_type,
+      rate: Number(form.rate),
+      headcount: Number(form.headcount),
+      days: Number(form.days) || 1,
+      location: form.location,
+      job_date: form.job_date,
+      gps_auto_checkin: form.gps_auto_checkin,
+      item_list: isProcurement ? form.item_list : null,
+      budget: isProcurement ? Number(form.budget) : null,
+      lat: form.lat,
+      lng: form.lng,
+    };
     try {
-      await api("POST", "/api/jobs", {
-        employer_id: employerId,
-        job_type: form.job_type,
-        category: form.category,
-        pay_type: form.pay_type,
-        rate: Number(form.rate),
-        headcount: Number(form.headcount),
-        days: Number(form.days) || 1,
-        location: form.location,
-        job_date: form.job_date,
-        gps_auto_checkin: form.gps_auto_checkin,
-        item_list: isProcurement ? form.item_list : null,
-        budget: isProcurement ? Number(form.budget) : null,
-      });
-      setForm(initialForm);
-      onPosted();
+      if (isEditing) {
+        await api("PATCH", `/api/jobs/${job.id}`, payload);
+        onSaved();
+      } else {
+        await api("POST", "/api/jobs", payload);
+        setForm(initialForm);
+        onPosted();
+      }
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -62,11 +114,11 @@ export default function JobPostForm({ employerId, onPosted }) {
 
   return (
     <form className="employerCard" onSubmit={submit}>
-      <h3>โพสต์งานใหม่</h3>
+      <h3>{isEditing ? "แก้ไขงาน" : "โพสต์งานใหม่"}</h3>
 
       <div className="textField">
         <label>ลักษณะงาน</label>
-        <select value={form.job_type} onChange={(e) => set("job_type", e.target.value)}>
+        <select value={form.job_type} onChange={(e) => set("job_type", e.target.value)} disabled={isEditing}>
           <option value="labor">จ้างแรงงานตามประเภทงาน</option>
           <option value="procurement">🛒 จัดซื้ออุปกรณ์ตามสั่ง</option>
         </select>
@@ -128,15 +180,26 @@ export default function JobPostForm({ employerId, onPosted }) {
         <input type="date" required value={form.job_date} onChange={(e) => set("job_date", e.target.value)} />
       </div>
 
+      <button type="button" className="btnOutlinePink small" onClick={useCurrentLocation} disabled={locating}>
+        {locating ? "กำลังระบุตำแหน่ง..." : form.lat ? "📍 อัปเดตตำแหน่งปัจจุบัน" : "📍 ใช้ตำแหน่งปัจจุบัน"}
+      </button>
+
       <label className="checkRow">
         เช็คอินอัตโนมัติเมื่อ GPS นายจ้าง-ลูกจ้างพบกัน
         <input type="checkbox" checked={form.gps_auto_checkin} onChange={(e) => set("gps_auto_checkin", e.target.checked)} />
       </label>
 
       <p className="err">{err}</p>
-      <button type="submit" className="btnPink" disabled={saving}>
-        {saving ? "กำลังโพสต์..." : "โพสต์งาน"}
-      </button>
+      <div className="jobCardActions">
+        <button type="submit" className="btnPink" disabled={saving}>
+          {saving ? "กำลังบันทึก..." : isEditing ? "บันทึกการแก้ไข" : "โพสต์งาน"}
+        </button>
+        {isEditing && (
+          <button type="button" className="btnOutlineDark" onClick={onCancelEdit}>
+            ยกเลิก
+          </button>
+        )}
+      </div>
     </form>
   );
 }

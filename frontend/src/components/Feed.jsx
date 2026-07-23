@@ -5,12 +5,19 @@ import JobCard from "./JobCard";
 export default function Feed({ onGoLogin }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState("");
+  const [location, setLocation] = useState("");
   const [err, setErr] = useState("");
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
-        const { jobs } = await api("GET", "/api/jobs");
+        const params = new URLSearchParams();
+        if (category) params.set("category", category);
+        if (location) params.set("location", location);
+        const qs = params.toString();
+        const { jobs } = await api("GET", `/api/jobs${qs ? `?${qs}` : ""}`);
         setJobs(jobs);
       } catch (e) {
         setErr(e.message);
@@ -19,7 +26,7 @@ export default function Feed({ onGoLogin }) {
       }
     }
     load();
-  }, []);
+  }, [category, location]);
 
   return (
     <div className="employerScreen">
@@ -35,9 +42,25 @@ export default function Feed({ onGoLogin }) {
       </div>
 
       <div className="employerJobsSection">
+        <div className="filterBar">
+          <div className="searchBox">
+            🔍
+            <input
+              placeholder="ค้นหาพื้นที่/สถานที่นัด"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <input
+            placeholder="ประเภทงาน"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            style={{ maxWidth: 140, border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 10px", fontSize: "0.85rem" }}
+          />
+        </div>
         {loading && <p className="empty">กำลังโหลด...</p>}
         {err && <p className="err">{err}</p>}
-        {!loading && !err && jobs.length === 0 && <p className="empty">ยังไม่มีงานเปิดรับสมัครตอนนี้</p>}
+        {!loading && !err && jobs.length === 0 && <p className="empty">ไม่พบงานที่ตรงกับเงื่อนไข</p>}
         {jobs.map((job) => (
           <JobCard key={job.id} job={job} />
         ))}

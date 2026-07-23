@@ -10,6 +10,7 @@ from db import get_db
 bp = Blueprint("auth", __name__)
 
 OTP_TTL_MINUTES = 5
+OTP_RESEND_COOLDOWN_SECONDS = 60
 PHONE_RE = re.compile(r"^0\d{9}$")
 
 
@@ -24,11 +25,25 @@ def request_otp():
     if not PHONE_RE.match(phone):
         return jsonify(error="เบอร์โทรศัพท์ไม่ถูกต้อง"), 400
 
+    conn = get_db()
+
+    # otp_codes.created_at is written via SQLite's own datetime('now')
+    # (UTC), so compare against datetime.utcnow() here to match — mixing
+    # it with local-time datetime.now() would throw the cooldown off by
+    # the server's UTC offset.
+    existing = conn.execute(
+        "SELECT created_at FROM otp_codes WHERE phone = ?", (phone,)
+    ).fetchone()
+    if existing:
+        elapsed = (datetime.utcnow() - datetime.fromisoformat(existing["created_at"])).total_seconds()
+        if elapsed < OTP_RESEND_COOLDOWN_SECONDS:
+            conn.close()
+            return jsonify(error="กรุณารอสักครู่ก่อนขอรหัสใหม่อีกครั้ง"), 429
+
     code = f"{random.randint(0, 999999):06d}"
     ref = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
     expires_at = (datetime.now() + timedelta(minutes=OTP_TTL_MINUTES)).isoformat(timespec="seconds")
 
-    conn = get_db()
     conn.execute(
         """INSERT INTO otp_codes (phone, code, ref, expires_at) VALUES (?, ?, ?, ?)
            ON CONFLICT(phone) DO UPDATE SET code = excluded.code, ref = excluded.ref,
@@ -77,7 +92,7 @@ def complete_profile():
     phone = _normalize_phone(data.get("phone"))
     name = (data.get("name") or "").strip()
     role = data.get("role")
-    if role not in ("employer", "worker"):
+    if role not in ("employer", "worker", "both"):
         return jsonify(error="สถานะไม่ถูกต้อง"), 400
     if not name:
         return jsonify(error="กรุณากรอกชื่อ"), 400
