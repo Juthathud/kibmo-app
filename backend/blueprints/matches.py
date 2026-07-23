@@ -364,6 +364,9 @@ def mark_no_show(match_id):
     if job["employer_id"] != employer_id:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์แจ้งเรื่องนี้"), 403
+    if job["status"] not in ("staffed", "in_progress"):
+        conn.close()
+        return jsonify(error="แจ้งไม่มาตามนัดได้เฉพาะงานที่พร้อมเริ่มหรือกำลังทำงานเท่านั้น"), 400
     if match["no_show"]:
         conn.close()
         return jsonify(error="แจ้งไปแล้ว"), 400

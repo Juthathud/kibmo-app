@@ -149,6 +149,14 @@ def get_db():
 # of 0). The app already validates role/status in Python before every
 # write, so losing the CHECK itself is fine — UNIQUE(phone) is restored
 # explicitly since that one is worth keeping at the DB level.
+#
+# IMPORTANT: any MIGRATIONS entry that adds a column to users or jobs must
+# add that same column here too (jobs -> _JOBS_REBUILD_DDL below). This bit
+# a real deploy already: no_show_count was added to MIGRATIONS but not here,
+# so on a fresh database `_ensure_role_allows_both` rebuilt `users` without
+# it, then the INSERT ... SELECT crashed because the old (pre-rebuild) table
+# still had the column. On an existing database this fails loudly rather
+# than silently dropping data, but it still means the app won't come up.
 _USERS_REBUILD_DDL = """
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -175,7 +183,8 @@ CREATE TABLE users (
     phone_visible_on_resume INTEGER NOT NULL DEFAULT 0,
     emergency_name TEXT, emergency_phone TEXT, emergency_relation TEXT,
     rating_avg REAL NOT NULL DEFAULT 0,
-    rating_count INTEGER NOT NULL DEFAULT 0
+    rating_count INTEGER NOT NULL DEFAULT 0,
+    no_show_count INTEGER NOT NULL DEFAULT 0
 )
 """
 
