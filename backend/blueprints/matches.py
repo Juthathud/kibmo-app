@@ -268,9 +268,6 @@ def rate_match(match_id):
         if job["employer_id"] != employer_id:
             conn.close()
             return jsonify(error="คุณไม่มีสิทธิ์ให้คะแนนงานนี้"), 403
-        if match["rating_by_employer"] is not None:
-            conn.close()
-            return jsonify(error="ให้คะแนนไปแล้ว"), 400
         rate_column, note_column = "rating_by_employer", "rating_by_employer_note"
         rated_user_id = match["worker_id"]
     else:
@@ -281,18 +278,25 @@ def rate_match(match_id):
         if match["worker_id"] != worker_id:
             conn.close()
             return jsonify(error="คุณไม่มีสิทธิ์ให้คะแนนงานนี้"), 403
-        if match["rating_by_worker"] is not None:
-            conn.close()
-            return jsonify(error="ให้คะแนนไปแล้ว"), 400
         rate_column, note_column = "rating_by_worker", "rating_by_worker_note"
         rated_user_id = job["employer_id"]
 
-    # BEGIN IMMEDIATE around the read-then-write rating_avg/rating_count
-    # update — same overbooking-style race as respond_to_job otherwise:
-    # two ratings landing for the same user at once could both read the
-    # same stale count and one update would clobber the other.
+    # BEGIN IMMEDIATE before the already-rated re-check (not just the
+    # rating_avg/rating_count update) — checking match["rating_by_*"] from
+    # the row fetched above the transaction let two concurrent submits of
+    # the same rating type both pass the check and both count into
+    # rating_avg/rating_count, double-weighting one rating and letting the
+    # second silently overwrite the first's stored value.
     conn.execute("BEGIN IMMEDIATE")
     try:
+        current = conn.execute(
+            f"SELECT {rate_column} AS existing FROM matches WHERE id = ?", (match_id,)
+        ).fetchone()
+        if current["existing"] is not None:
+            conn.rollback()
+            conn.close()
+            return jsonify(error="ให้คะแนนไปแล้ว"), 400
+
         conn.execute(
             f"UPDATE matches SET {rate_column} = ?, {note_column} = ? WHERE id = ?",
             (rating, note, match_id),
