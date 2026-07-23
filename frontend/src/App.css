@@ -602,8 +602,8 @@
 }
 .ratingStars button.filled { color: var(--pink); }
 
-.filterBar { display: flex; gap: 8px; margin-bottom: 12px; }
-.filterBar .searchBox { flex: 1; margin-bottom: 0; }
+.filterBar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.filterBar .searchBox { flex: 1 1 200px; margin-bottom: 0; }
 .filterBar select {
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -611,6 +611,19 @@
   font-size: 0.85rem;
   background: var(--surface);
   color: var(--ink);
+}
+.filterCategoryInput {
+  flex: 1 1 120px;
+  max-width: 160px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+@media (max-width: 360px) {
+  .filterBar .searchBox, .filterCategoryInput { flex-basis: 100%; max-width: 100%; }
 }
 
 .roleTabs {

@@ -52,10 +52,10 @@ export default function Feed({ onGoLogin }) {
             />
           </div>
           <input
+            className="filterCategoryInput"
             placeholder="ประเภทงาน"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            style={{ maxWidth: 140, border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 10px", fontSize: "0.85rem" }}
           />
         </div>
         {loading && <p className="empty">กำลังโหลด...</p>}

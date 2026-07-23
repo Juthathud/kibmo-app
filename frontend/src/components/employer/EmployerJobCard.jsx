@@ -264,18 +264,13 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
       job={job}
       actions={
         <div className="employerJobDetail">
-          {job.status === "open" && (
+          {(job.status === "open" || job.status === "staffed") && (
             <div className="jobCardActions" style={{ marginBottom: 12 }}>
-              <button type="button" className="btnOutlineDark small" onClick={() => setEditing(true)}>
-                แก้ไขงาน
-              </button>
-              <button type="button" className="btnOutlineDark small" disabled={busy} onClick={cancelJob}>
-                ยกเลิกงาน
-              </button>
-            </div>
-          )}
-          {job.status === "staffed" && (
-            <div className="jobCardActions" style={{ marginBottom: 12 }}>
+              {job.status === "open" && (
+                <button type="button" className="btnOutlineDark small" onClick={() => setEditing(true)}>
+                  แก้ไขงาน
+                </button>
+              )}
               <button type="button" className="btnOutlineDark small" disabled={busy} onClick={cancelJob}>
                 ยกเลิกงาน
               </button>

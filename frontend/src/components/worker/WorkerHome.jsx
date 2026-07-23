@@ -170,10 +170,10 @@ export default function WorkerHome({ user, onLogout }) {
             />
           </div>
           <input
+            className="filterCategoryInput"
             placeholder="ประเภทงาน"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            style={{ maxWidth: 140, border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 10px", fontSize: "0.85rem" }}
           />
         </div>
         {!loading && available.length === 0 && <p className="empty">ไม่พบงานที่ตรงกับเงื่อนไข</p>}
