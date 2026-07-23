@@ -271,10 +271,7 @@ def rate_match(match_id):
         if match["rating_by_employer"] is not None:
             conn.close()
             return jsonify(error="ให้คะแนนไปแล้ว"), 400
-        conn.execute(
-            "UPDATE matches SET rating_by_employer = ?, rating_by_employer_note = ? WHERE id = ?",
-            (rating, note, match_id),
-        )
+        rate_column, note_column = "rating_by_employer", "rating_by_employer_note"
         rated_user_id = match["worker_id"]
     else:
         worker_id = data.get("worker_id")
@@ -287,22 +284,33 @@ def rate_match(match_id):
         if match["rating_by_worker"] is not None:
             conn.close()
             return jsonify(error="ให้คะแนนไปแล้ว"), 400
-        conn.execute(
-            "UPDATE matches SET rating_by_worker = ?, rating_by_worker_note = ? WHERE id = ?",
-            (rating, note, match_id),
-        )
+        rate_column, note_column = "rating_by_worker", "rating_by_worker_note"
         rated_user_id = job["employer_id"]
 
-    user = conn.execute(
-        "SELECT rating_avg, rating_count FROM users WHERE id = ?", (rated_user_id,)
-    ).fetchone()
-    new_count = user["rating_count"] + 1
-    new_avg = (user["rating_avg"] * user["rating_count"] + rating) / new_count
-    conn.execute(
-        "UPDATE users SET rating_avg = ?, rating_count = ? WHERE id = ?",
-        (new_avg, new_count, rated_user_id),
-    )
-    conn.commit()
+    # BEGIN IMMEDIATE around the read-then-write rating_avg/rating_count
+    # update — same overbooking-style race as respond_to_job otherwise:
+    # two ratings landing for the same user at once could both read the
+    # same stale count and one update would clobber the other.
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        conn.execute(
+            f"UPDATE matches SET {rate_column} = ?, {note_column} = ? WHERE id = ?",
+            (rating, note, match_id),
+        )
+        user = conn.execute(
+            "SELECT rating_avg, rating_count FROM users WHERE id = ?", (rated_user_id,)
+        ).fetchone()
+        new_count = user["rating_count"] + 1
+        new_avg = (user["rating_avg"] * user["rating_count"] + rating) / new_count
+        conn.execute(
+            "UPDATE users SET rating_avg = ?, rating_count = ? WHERE id = ?",
+            (new_avg, new_count, rated_user_id),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
     conn.close()
     return jsonify(ok=True)
 
