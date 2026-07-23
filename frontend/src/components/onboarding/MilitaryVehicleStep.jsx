@@ -82,7 +82,7 @@ export default function MilitaryVehicleStep({ phone, onNext, onSkip }) {
           </div>
         )}
 
-        <div className="wizardSectionLabel">รู้จักกีบหมูรายวันครั้งแรกจากช่องทางไหน? <span className="req">*</span></div>
+        <div className="wizardSectionLabel">รู้จักกีบหมู แมนเพาเวอร์ครั้งแรกจากช่องทางไหน? <span className="req">*</span></div>
         <div className="pillGrid">
           {REFERRALS.map((r) => (
             <div

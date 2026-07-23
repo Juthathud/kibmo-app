@@ -39,8 +39,11 @@ export default function WorkerHome({ user, onLogout }) {
     <div className="employerScreen">
       <div className="employerTopBar">
         <div>
-          <div className="employerName">{user.name}</div>
-          <div className="employerRoleTag">ลูกจ้าง</div>
+          <div className="employerAvatar">{user.name?.[0] || "?"}</div>
+          <div>
+            <div className="employerName">{user.name}</div>
+            <div className="employerRoleTag">ลูกจ้าง</div>
+          </div>
         </div>
         <button type="button" className="btnOutlineDark small" onClick={onLogout}>ออกจากระบบ</button>
       </div>

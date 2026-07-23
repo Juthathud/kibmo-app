@@ -1,4 +1,5 @@
 import { useState } from "react";
+import IdCardScanStep from "./IdCardScanStep";
 import PersonalInfoStep from "./PersonalInfoStep";
 import ContactInfoStep from "./ContactInfoStep";
 import AddressStep from "./AddressStep";
@@ -10,6 +11,7 @@ import ResumePromptStep from "./ResumePromptStep";
 import DocumentsStep from "./DocumentsStep";
 
 const STEPS = [
+  IdCardScanStep,
   PersonalInfoStep,
   ContactInfoStep,
   AddressStep,
@@ -23,6 +25,7 @@ const STEPS = [
 
 export default function OnboardingWizard({ phone, onComplete }) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [prefill, setPrefill] = useState({});
   const Step = STEPS[stepIndex];
   const next = () => {
     if (stepIndex >= STEPS.length - 1) {
@@ -38,6 +41,8 @@ export default function OnboardingWizard({ phone, onComplete }) {
       onNext={next}
       onSkip={next}
       onComplete={onComplete}
+      prefill={prefill}
+      onExtracted={(fields) => setPrefill((p) => ({ ...p, ...fields }))}
     />
   );
 }

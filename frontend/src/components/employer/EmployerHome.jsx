@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import JobPostForm from "./JobPostForm";
-import JobCard from "../JobCard";
+import EmployerJobCard from "./EmployerJobCard";
 
 export default function EmployerHome({ user, onLogout }) {
   const [jobs, setJobs] = useState([]);
@@ -23,8 +23,11 @@ export default function EmployerHome({ user, onLogout }) {
     <div className="employerScreen">
       <div className="employerTopBar">
         <div>
-          <div className="employerName">{user.name}</div>
-          <div className="employerRoleTag">นายจ้าง</div>
+          <div className="employerAvatar">{user.name?.[0] || "?"}</div>
+          <div>
+            <div className="employerName">{user.name}</div>
+            <div className="employerRoleTag">นายจ้าง</div>
+          </div>
         </div>
         <button type="button" className="btnOutlineDark small" onClick={onLogout}>ออกจากระบบ</button>
       </div>
@@ -36,7 +39,12 @@ export default function EmployerHome({ user, onLogout }) {
         {loading && <p className="empty">กำลังโหลด...</p>}
         {!loading && jobs.length === 0 && <p className="empty">ยังไม่มีงานที่โพสต์</p>}
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} />
+          <EmployerJobCard
+            key={job.id}
+            job={job}
+            employerId={user.id}
+            onChanged={loadJobs}
+          />
         ))}
       </div>
     </div>

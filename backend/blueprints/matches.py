@@ -38,6 +38,31 @@ def worker_jobs(worker_id):
     )
 
 
+@bp.route("/api/jobs/<int:job_id>/workers")
+def job_workers(job_id):
+    conn = get_db()
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not job:
+        conn.close()
+        return jsonify(error="ไม่พบงานนี้"), 404
+
+    rows = conn.execute(
+        """SELECT u.id, u.name, u.first_name, u.last_name, u.nickname,
+                  u.phone, u.line_id, u.profile_photo_url, m.created_at
+           FROM matches m
+           JOIN users u ON u.id = m.worker_id
+           WHERE m.job_id = ? AND m.status = 'accepted'
+           ORDER BY m.created_at, m.id""",
+        (job_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify(
+        headcount=job["headcount"],
+        accepted_count=len(rows),
+        workers=[dict(r) for r in rows],
+    )
+
+
 @bp.route("/api/matches", methods=["POST"])
 def respond_to_job():
     data = request.get_json(force=True)

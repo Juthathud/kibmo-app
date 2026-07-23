@@ -2,13 +2,12 @@ import { useState } from "react";
 import { api } from "../api";
 import AuthBrand from "./AuthBrand";
 
-export default function PhoneLogin({ onOtpSent, onBrowseFeed, onGoRegister }) {
+export default function PhoneLogin({ onOtpSent, onBrowseFeed }) {
   const [phone, setPhone] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function submit(e) {
-    e.preventDefault();
+  async function requestOtp() {
     setErr("");
     setLoading(true);
     try {
@@ -19,6 +18,11 @@ export default function PhoneLogin({ onOtpSent, onBrowseFeed, onGoRegister }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function submit(e) {
+    e.preventDefault();
+    requestOtp();
   }
 
   return (
@@ -43,7 +47,7 @@ export default function PhoneLogin({ onOtpSent, onBrowseFeed, onGoRegister }) {
 
         <div className="authDivider"><span>หรือ</span></div>
 
-        <button type="button" className="btnOutlinePink" onClick={onGoRegister}>
+        <button type="button" className="btnOutlinePink" onClick={requestOtp} disabled={loading}>
           สมัครสมาชิก
         </button>
         <button type="button" className="btnOutlineDark" onClick={onBrowseFeed}>

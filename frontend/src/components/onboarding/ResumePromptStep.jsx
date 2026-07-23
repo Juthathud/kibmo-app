@@ -6,7 +6,7 @@ export default function ResumePromptStep({ onNext }) {
         <div className="resumePromptTitle">สมัครสมาชิกสำเร็จ</div>
         <p className="resumePromptText">
           เพิ่มข้อมูล Resume ของคุณให้สมบูรณ์เพื่อเพิ่มโอกาสได้ทำงานมากขึ้น
-          ทางกีบหมูรายวันจะประเมินความสามารถของผู้สมัครผ่าน Resume
+          ทางกีบหมู แมนเพาเวอร์จะประเมินความสามารถของผู้สมัครผ่าน Resume
         </p>
       </div>
       <div className="wizardFooter" style={{ flexDirection: "column" }}>

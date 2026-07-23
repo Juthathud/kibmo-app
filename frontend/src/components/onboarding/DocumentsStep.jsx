@@ -39,7 +39,7 @@ export default function DocumentsStep({ phone, onComplete, onSkip }) {
       </div>
       <div className="wizardBody">
         <p className="empty">
-          เอกสารเพื่อยืนยันตัวตนผู้สมัครและรับงานกับทางกีบหมูรายวันโดยตรง
+          เอกสารเพื่อยืนยันตัวตนผู้สมัครและรับงานกับทางกีบหมู แมนเพาเวอร์โดยตรง
           ข้อมูลนี้จะเป็นความลับ ไม่ถูกเผยแพร่ให้กับบริษัทอื่น
         </p>
 

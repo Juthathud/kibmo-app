@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { patchProfile, uploadDocument, assetUrl } from "../../api";
 
-export default function PersonalInfoStep({ phone, onNext, onSkip }) {
+export default function PersonalInfoStep({ phone, onNext, onSkip, prefill }) {
   const [photoUrl, setPhotoUrl] = useState("");
-  const [titlePrefix, setTitlePrefix] = useState("นาย");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [titlePrefix, setTitlePrefix] = useState(prefill?.title_prefix || "นาย");
+  const [firstName, setFirstName] = useState(prefill?.first_name || "");
+  const [lastName, setLastName] = useState(prefill?.last_name || "");
   const [nickname, setNickname] = useState("");
-  const [gender, setGender] = useState("ชาย");
-  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState(prefill?.gender || "ชาย");
+  const [birthDate, setBirthDate] = useState(prefill?.birth_date || "");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [disabled, setDisabled] = useState(false);
@@ -56,7 +56,11 @@ export default function PersonalInfoStep({ phone, onNext, onSkip }) {
         <h2>แก้ไขข้อมูลส่วนตัว</h2>
         <button type="button" className="wizardSkipTop" onClick={onSkip}>ข้าม</button>
       </div>
-      <div className="wizardBanner">กรอกข้อมูลครบ โอกาสได้งานมากยิ่งขึ้น รีบกรอกเลยวันนี้!</div>
+      <div className="wizardBanner">
+        {prefill?.first_name
+          ? "อ่านข้อมูลจากบัตรประชาชนให้แล้ว กรุณาตรวจสอบความถูกต้องก่อนไปต่อ"
+          : "กรอกข้อมูลครบ โอกาสได้งานมากยิ่งขึ้น รีบกรอกเลยวันนี้!"}
+      </div>
       <div className="wizardBody">
         <p className="fieldRequired">เลือกรูปโปรไฟล์ *</p>
         <label className="photoPicker">

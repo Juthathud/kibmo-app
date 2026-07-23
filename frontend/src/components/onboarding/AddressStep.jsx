@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { patchProfile } from "../../api";
 
-export default function AddressStep({ phone, onNext, onSkip }) {
-  const [form, setForm] = useState({ postal_code: "", province: "", district: "", subdistrict: "", address: "" });
+export default function AddressStep({ phone, onNext, onSkip, prefill }) {
+  const [form, setForm] = useState({
+    postal_code: "",
+    province: prefill?.province || "",
+    district: prefill?.district || "",
+    subdistrict: prefill?.subdistrict || "",
+    address: prefill?.address || "",
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -30,7 +36,9 @@ export default function AddressStep({ phone, onNext, onSkip }) {
         <button type="button" className="wizardSkipTop" onClick={onSkip}>ข้าม</button>
       </div>
       <div className="wizardBody">
-        <p className="empty">กรุณากรอกที่อยู่ปัจจุบัน</p>
+        <p className="empty">
+          {prefill?.address ? "อ่านที่อยู่จากบัตรประชาชนให้แล้ว กรุณาตรวจสอบความถูกต้องก่อนไปต่อ" : "กรุณากรอกที่อยู่ปัจจุบัน"}
+        </p>
 
         <div className="textField">
           <label>รหัสไปรษณีย์</label>

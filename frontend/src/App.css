@@ -1,29 +1,35 @@
 .authScreen {
   max-width: 420px;
   margin: 0 auto;
-  padding: 36px 20px 40px;
+  padding: 40px 20px 40px;
   text-align: left;
 }
 
 .authBrand { display: flex; flex-direction: column; align-items: flex-start; }
 .authLogo {
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--pink), var(--pink-dark));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  box-shadow: 0 4px 14px rgba(236, 30, 121, 0.35);
-  margin-bottom: 12px;
+  font-size: 32px;
+  box-shadow: var(--shadow-pink), 0 0 0 5px var(--pink-tint);
+  margin-bottom: 14px;
 }
-.authAppName { font-size: 1.5rem; font-weight: 800; color: var(--ink); }
+.authAppName { font-size: 1.55rem; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
 .authAppName span { color: var(--pink); }
-.authTagline { color: var(--muted); font-size: 0.85rem; margin: 6px 0 28px; }
+.authTagline { color: var(--muted); font-size: 0.85rem; margin: 6px 0 30px; line-height: 1.6; }
 
-.authCard { background: transparent; border: none; box-shadow: none; padding: 0; }
-.authCard h2 { font-size: 1.25rem; text-align: center; margin: 4px 0 20px; }
+.authCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+  padding: 26px 22px;
+}
+.authCard h2 { font-size: 1.25rem; text-align: center; margin: 4px 0 22px; }
 
 .authBackBtn {
   background: none;
@@ -40,21 +46,22 @@
 
 .fieldLabel {
   display: block;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   font-size: 0.9rem;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 .fieldLabel input, .fieldLabel select {
   display: block;
   width: 100%;
-  margin-top: 5px;
-  padding: 10px 12px;
+  margin-top: 6px;
+  padding: 11px 13px;
   border: 1.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 0.95rem;
   color: var(--ink);
-  background: #fffdfb;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .fieldLabel input:focus, .fieldLabel select:focus {
   outline: none;
@@ -67,10 +74,11 @@
   align-items: center;
   gap: 10px;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   padding: 2px 4px 2px 14px;
-  margin-bottom: 18px;
-  background: #fffdfb;
+  margin-bottom: 20px;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .phoneField:focus-within { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-light); }
 .phoneField .phonePrefix {
@@ -84,9 +92,10 @@
   border: none;
   outline: none;
   margin: 0;
-  padding: 10px 8px;
+  padding: 11px 8px;
   width: 100%;
   font-size: 0.95rem;
+  background: transparent;
 }
 
 .btnPink {
@@ -95,42 +104,45 @@
   border: none;
   color: #fff;
   background: linear-gradient(135deg, var(--pink), var(--pink-dark));
-  box-shadow: 0 4px 14px rgba(236, 30, 121, 0.3);
-  padding: 13px;
-  border-radius: 999px;
+  box-shadow: var(--shadow-pink);
+  padding: 14px;
+  border-radius: var(--radius-pill);
   font-size: 1rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
-.btnPink:disabled { opacity: 0.7; }
+.btnPink:hover:not(:disabled) { box-shadow: 0 12px 28px rgba(201, 151, 46, 0.4); }
+.btnPink:disabled { opacity: 0.6; box-shadow: none; }
 
 .btnOutlinePink, .btnOutlineDark {
   display: block;
   width: 100%;
-  background: #fff;
-  border-radius: 999px;
+  background: var(--surface);
+  border-radius: var(--radius-pill);
   padding: 12px;
   font-size: 0.95rem;
   font-weight: 700;
   margin-bottom: 12px;
 }
 .btnOutlinePink { color: var(--pink); border: 1.5px solid var(--pink); }
-.btnOutlineDark { color: var(--ink); border: 1.5px solid var(--ink); }
-.btnOutlinePink:hover, .btnOutlineDark:hover { background: var(--pink-light); }
+.btnOutlineDark { color: var(--ink); border: 1.5px solid var(--border); }
+.btnOutlinePink:hover { background: var(--pink-tint); }
+.btnOutlineDark:hover { background: var(--bg); border-color: var(--ink); }
 
 .authDivider {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--muted);
+  color: var(--muted-soft);
   font-size: 0.85rem;
-  margin: 22px 0;
+  margin: 24px 0;
 }
 .authDivider::before, .authDivider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
 .err { color: var(--danger); font-size: 0.85rem; min-height: 1em; margin-top: 8px; font-weight: 600; }
 
 .otpHint { font-size: 0.9rem; color: var(--ink); line-height: 1.6; margin-bottom: 6px; }
-.otpRef { text-align: right; color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+.otpRef { text-align: right; color: var(--muted); font-size: 0.85rem; margin-bottom: 14px; letter-spacing: 0.03em; }
 
 .otpBoxes { display: flex; gap: 10px; margin-bottom: 18px; }
 .otpBoxes input {
@@ -140,11 +152,13 @@
   font-size: 1.4rem;
   font-weight: 700;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   outline: none;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .otpBoxes input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-light); }
-.otpBoxes input.filled { border-color: var(--pink); color: var(--pink); }
+.otpBoxes input.filled { border-color: var(--pink); color: var(--pink); background: var(--pink-tint); }
 
 .otpResend { color: var(--pink); font-size: 0.9rem; font-weight: 600; }
 .otpResendBtn {
@@ -159,23 +173,26 @@
 
 .devHint {
   margin-top: 24px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: #fffbeb;
-  border: 1px dashed #d97706;
-  border-radius: 10px;
+  border: 1px dashed var(--warning);
+  border-radius: var(--radius-sm);
   font-size: 0.8rem;
   color: #92400e;
+  line-height: 1.5;
 }
 
-.empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+.empty { color: var(--muted); font-size: 0.9rem; font-style: italic; padding: 6px 0; }
 
 /* ---------- onboarding wizard (worker profile steps) ---------- */
 
 .wizardScreen {
   max-width: 480px;
   margin: 0 auto;
-  padding-bottom: 100px;
+  padding-bottom: 110px;
   text-align: left;
+  background: var(--surface);
+  min-height: 100svh;
 }
 
 .wizardHeader {
@@ -184,6 +201,10 @@
   gap: 16px;
   padding: 18px 20px;
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
 }
 .wizardHeader button {
   background: none;
@@ -194,17 +215,18 @@
   line-height: 1;
 }
 .wizardHeader .wizardSkipTop { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-left: auto; }
-.wizardHeader h2 { margin: 0; font-size: 1.05rem; }
+.wizardHeader .wizardSkipTop:hover { color: var(--pink); }
+.wizardHeader h2 { font-size: 1.05rem; }
 
-.wizardBody { padding: 20px; }
+.wizardBody { padding: 22px 20px; }
 
 .wizardBanner {
-  background: #fbbf24;
-  color: #1f1f1f;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #78350f;
   text-align: center;
   font-weight: 700;
   font-size: 0.85rem;
-  padding: 10px 16px;
+  padding: 11px 16px;
 }
 
 .fieldRequired { text-align: center; font-weight: 700; margin-bottom: 10px; }
@@ -214,12 +236,14 @@
   display: block;
   width: 140px;
   height: 140px;
-  margin: 0 auto 14px;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  background: #f1f1f1;
+  background: var(--bg);
+  border: 3px solid var(--pink-tint);
   position: relative;
   cursor: pointer;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 .photoPicker img { width: 100%; height: 100%; object-fit: cover; }
 .photoPlaceholder {
@@ -244,6 +268,8 @@
   align-items: center;
   justify-content: center;
   font-size: 1rem;
+  box-shadow: var(--shadow-pink);
+  border: 2px solid var(--surface);
 }
 .photoPicker input[type="file"] {
   position: absolute;
@@ -253,12 +279,14 @@
 }
 
 .wizardSectionLabel {
-  background: #ececec;
-  padding: 10px 14px;
+  background: var(--bg);
+  padding: 11px 14px;
   font-weight: 700;
   display: flex;
   justify-content: space-between;
-  margin: 20px -20px 14px;
+  margin: 22px -20px 14px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .wizardSectionLabel .req { color: var(--danger); }
 .wizardSectionLabel .selectAll { color: var(--pink); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
@@ -267,15 +295,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #f1f1f1;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
   font-size: 1rem;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.categoryGroup { background: #f7f7f7; margin: 0 -20px; padding: 0 20px; }
-.categoryGroup .checkRow { background: #f7f7f7; }
-.categorySubs { background: #fff; }
+.categoryGroup { background: var(--bg); margin: 0 -20px; padding: 0 20px; }
+.categoryGroup .checkRow { background: var(--bg); }
+.categorySubs { background: var(--surface); }
 .categorySubs .checkRow { padding-left: 10px; }
 .chev { font-size: 0.7rem; color: var(--muted); margin-left: 6px; }
 .checkRow input, .radioRow input { width: 18px; height: 18px; accent-color: var(--pink); }
@@ -283,21 +312,22 @@
 .pillGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .pillCard {
   border: 1.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
   font-size: 0.95rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
-.pillCard.selected { border-color: var(--pink); background: var(--pink-light); color: var(--pink-dark); }
+.pillCard.selected { border-color: var(--pink); background: var(--pink-tint); color: var(--pink-dark); box-shadow: 0 0 0 1px var(--pink) inset; }
 
 .textField {
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
-.textField label { font-size: 0.9rem; color: var(--muted); display: block; margin-bottom: 6px; }
+.textField label { font-size: 0.9rem; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 600; }
 .textField input {
   width: 100%;
   padding: 12px 14px;
@@ -305,6 +335,8 @@
   border-bottom: 1.5px solid var(--border);
   font-size: 1rem;
   outline: none;
+  background: transparent;
+  transition: border-color 0.15s ease;
 }
 .textField input:focus { border-color: var(--pink); }
 
@@ -317,8 +349,9 @@
   left: 0;
   right: 0;
   padding: 14px 20px 20px;
-  background: #fff;
+  background: var(--surface);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 20px rgba(23, 36, 46, 0.06);
   display: flex;
   gap: 10px;
   max-width: 480px;
@@ -336,10 +369,11 @@
   display: block;
   margin: 0 auto;
 }
+.wizardSkip:hover { color: var(--pink); }
 
 .uploadBox {
   border: 1.5px dashed var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 36px 16px;
   text-align: center;
   color: var(--muted);
@@ -348,9 +382,12 @@
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  background: var(--bg);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-.uploadBox.done { border-color: var(--pink); color: var(--pink-dark); }
-.uploadBox img { max-height: 120px; display: block; margin: 0 auto 10px; border-radius: 8px; }
+.uploadBox:hover { border-color: var(--pink); background: var(--pink-tint); }
+.uploadBox.done { border-color: var(--pink); color: var(--pink-dark); background: var(--pink-tint); }
+.uploadBox img { max-height: 120px; display: block; margin: 0 auto 10px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 .uploadBox input[type="file"] {
   position: absolute;
   inset: 0;
@@ -363,60 +400,85 @@
   align-items: center;
   gap: 10px;
   border: 1.5px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 16px;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.searchBox input { border: none; outline: none; width: 100%; font-size: 0.95rem; }
+.searchBox:focus-within { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-light); }
+.searchBox input { border: none; outline: none; width: 100%; font-size: 0.95rem; background: transparent; }
 
 .resumePromptIcon { font-size: 3rem; text-align: center; margin-bottom: 10px; }
-.resumePromptTitle { text-align: center; color: #16a34a; font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; }
+.resumePromptTitle { text-align: center; color: var(--success); font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; }
 .resumePromptText { text-align: center; color: var(--ink); font-size: 0.95rem; line-height: 1.6; margin-bottom: 22px; }
 
 /* ---------- employer dashboard ---------- */
 
-.employerScreen { max-width: 520px; margin: 0 auto; padding: 20px 16px 60px; }
+.employerScreen { max-width: 520px; margin: 0 auto; padding: 24px 16px 60px; background: var(--bg); min-height: 100svh; }
 
 .employerTopBar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  gap: 12px;
+}
+.employerTopBar > div:first-child { display: flex; align-items: center; gap: 12px; }
+.employerAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-pink);
+  flex-shrink: 0;
 }
 .employerName { font-weight: 700; font-size: 1.05rem; }
 .employerRoleTag { color: var(--pink); font-size: 0.8rem; font-weight: 600; }
 .employerTopBar .btnOutlineDark.small { width: auto; padding: 7px 14px; font-size: 0.8rem; margin-bottom: 0; }
 
 .employerCard {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: 20px;
   margin-bottom: 20px;
 }
 .employerCard h3 { margin: 0 0 16px; font-size: 1.05rem; }
 
+.employerJobsSection { margin-bottom: 24px; }
 .employerJobsSection h3 { font-size: 1.05rem; margin-bottom: 12px; }
 
 .jobCard {
   border: 1px solid var(--border);
   border-left: 4px solid var(--pink);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  padding: 15px 16px;
   margin-bottom: 12px;
-  background: #fffdfb;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+.jobCard:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .jobCardTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 .jobCardCategory { font-weight: 700; }
-.jobCardMeta { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+.jobCardMeta { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
 
 .jobStatusBadge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 .jobStatus-open { background: #dbeafe; color: #1d4ed8; }
 .jobStatus-staffed { background: #fef3c7; color: #92400e; }
@@ -429,12 +491,12 @@
   color: var(--pink-dark);
   font-size: 0.72rem;
   font-weight: 700;
-  padding: 2px 10px;
-  border-radius: 999px;
-  margin-bottom: 6px;
+  padding: 3px 11px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 8px;
 }
 
-.jobCardActions { display: flex; gap: 10px; margin-top: 12px; }
+.jobCardActions { display: flex; gap: 10px; margin-top: 14px; }
 .jobCardActions .btnPink.small, .jobCardActions .btnOutlineDark.small { flex: 1; }
 
 .btnPink.small, .btnOutlineDark.small {
@@ -444,3 +506,42 @@
   font-size: 0.85rem;
   margin-bottom: 0;
 }
+
+/* Employer job management: accepted workers list + status control */
+.employerJobDetail {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.workerListHead {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.workerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.workerRow + .workerRow { border-top: 1px solid var(--border); }
+.workerAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.workerAvatar img { width: 100%; height: 100%; object-fit: cover; }
+.workerRowInfo { min-width: 0; }
+.workerRowName { font-weight: 600; font-size: 0.92rem; }
+.workerRowContact { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+.workerRowContact a { color: var(--pink-dark); text-decoration: none; }
+.employerJobDetail .btnPink.small { width: 100%; margin-top: 12px; }

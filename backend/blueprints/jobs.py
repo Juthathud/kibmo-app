@@ -9,6 +9,16 @@ REQUIRED_LABOR = ["employer_id", "category", "rate", "headcount", "days", "locat
 REQUIRED_PROCUREMENT = ["employer_id", "item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
 
 
+@bp.route("/api/jobs", methods=["GET"])
+def list_open_jobs():
+    conn = get_db()
+    jobs = conn.execute(
+        "SELECT * FROM jobs WHERE status = 'open' ORDER BY job_date, id DESC"
+    ).fetchall()
+    conn.close()
+    return jsonify(jobs=[_serialize(j) for j in jobs])
+
+
 @bp.route("/api/jobs", methods=["POST"])
 def create_job():
     data = request.get_json(force=True)
@@ -55,6 +65,41 @@ def create_job():
     )
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.commit()
+    conn.close()
+    return jsonify(job=_serialize(job))
+
+
+# Allowed forward transitions for a job's lifecycle. An employer can move a
+# job along this chain but not skip steps or move backwards.
+STATUS_TRANSITIONS = {
+    "open": {"in_progress"},
+    "staffed": {"in_progress"},
+    "in_progress": {"completed"},
+    "completed": set(),
+}
+
+
+@bp.route("/api/jobs/<int:job_id>/status", methods=["POST"])
+def update_job_status(job_id):
+    data = request.get_json(force=True)
+    new_status = data.get("status")
+    employer_id = data.get("employer_id")
+
+    conn = get_db()
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not job:
+        conn.close()
+        return jsonify(error="ไม่พบงานนี้"), 404
+    if employer_id is not None and job["employer_id"] != employer_id:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์แก้ไขงานนี้"), 403
+    if new_status not in STATUS_TRANSITIONS.get(job["status"], set()):
+        conn.close()
+        return jsonify(error="ไม่สามารถเปลี่ยนสถานะงานนี้ได้"), 400
+
+    conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_status, job_id))
+    conn.commit()
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     conn.close()
     return jsonify(job=_serialize(job))
 

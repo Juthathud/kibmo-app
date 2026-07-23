@@ -5,6 +5,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_from_directory
 
 from db import get_db, UPDATABLE_PROFILE_FIELDS
+from id_card_ocr import is_configured as ocr_configured, extract_id_card
 
 bp = Blueprint("profile", __name__)
 
@@ -73,6 +74,23 @@ def upload_document():
     conn.commit()
     conn.close()
     return jsonify(ok=True, url=url)
+
+
+@bp.route("/api/profile/ocr-id-card", methods=["POST"])
+def ocr_id_card():
+    if not ocr_configured():
+        return jsonify(error="ยังไม่ได้ตั้งค่าระบบอ่านบัตรอัตโนมัติ กรุณากรอกข้อมูลด้วยตนเอง"), 503
+
+    file = request.files.get("file")
+    if not file:
+        return jsonify(error="ไม่พบไฟล์รูปภาพ"), 400
+
+    try:
+        fields = extract_id_card(file.read())
+    except Exception:
+        return jsonify(error="อ่านข้อมูลจากบัตรไม่สำเร็จ กรุณากรอกข้อมูลด้วยตนเอง"), 502
+
+    return jsonify(ok=True, fields=fields)
 
 
 @bp.route("/uploads/<path:filename>")

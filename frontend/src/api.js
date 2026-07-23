@@ -26,6 +26,15 @@ export async function uploadDocument(phone, docType, file) {
   return data;
 }
 
+export async function ocrIdCard(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${API_BASE}/api/profile/ocr-id-card`, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "อ่านข้อมูลจากบัตรไม่สำเร็จ");
+  return data;
+}
+
 // uploaded-file URLs come back from the API as paths relative to the
 // backend origin (e.g. "/uploads/x.jpg") — in prod the frontend is a
 // separate static site, so they need the same API_BASE prefix to load.

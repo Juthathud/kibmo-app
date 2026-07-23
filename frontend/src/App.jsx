@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import "./App.css";
 import PhoneLogin from "./components/PhoneLogin";
@@ -8,11 +8,35 @@ import Home from "./components/Home";
 import Feed from "./components/Feed";
 import OnboardingWizard from "./components/onboarding/OnboardingWizard";
 
+const STORAGE_KEY = "kibmoo_user";
+
+function needsOnboarding(u) {
+  return u.role === "worker" && !u.onboarding_complete;
+}
+
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
-  const [step, setStep] = useState("phone");
-  const [phone, setPhone] = useState("");
+  const storedUser = loadStoredUser();
+  const [step, setStep] = useState(storedUser ? (needsOnboarding(storedUser) ? "onboarding" : "home") : "phone");
+  const [phone, setPhone] = useState(storedUser?.phone || "");
   const [otpMeta, setOtpMeta] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(storedUser);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [user]);
 
   function handleOtpSent(phoneNumber, result) {
     setPhone(phoneNumber);
@@ -34,13 +58,14 @@ export default function App() {
     setStep(needsOnboarding(verifiedUser) ? "onboarding" : "home");
   }
 
-  function needsOnboarding(u) {
-    return u.role === "worker" && !u.onboarding_complete;
-  }
-
   function handleRegisterDone(newUser) {
     setUser(newUser);
     setStep(needsOnboarding(newUser) ? "onboarding" : "home");
+  }
+
+  function handleOnboardingComplete() {
+    setUser((u) => (u ? { ...u, onboarding_complete: 1 } : u));
+    setStep("home");
   }
 
   function handleLogout() {
@@ -67,7 +92,7 @@ export default function App() {
     return <RegisterProfile phone={phone} onDone={handleRegisterDone} onBack={() => setStep("phone")} />;
   }
   if (step === "onboarding") {
-    return <OnboardingWizard phone={phone} onComplete={() => setStep("home")} />;
+    return <OnboardingWizard phone={phone} onComplete={handleOnboardingComplete} />;
   }
   if (step === "home" && user) {
     return <Home user={user} onLogout={handleLogout} />;
@@ -79,7 +104,6 @@ export default function App() {
     <PhoneLogin
       onOtpSent={handleOtpSent}
       onBrowseFeed={() => setStep("feed")}
-      onGoRegister={() => setStep("phone")}
     />
   );
 }
