@@ -1,3 +1,4 @@
+import os
 from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
@@ -7,6 +8,8 @@ from db import get_db
 from helpers import job_amount, job_filters
 
 bp = Blueprint("jobs", __name__)
+
+CRON_SECRET = os.environ.get("CRON_SECRET")
 
 REQUIRED_LABOR = ["employer_id", "category", "rate", "headcount", "days", "location", "job_date"]
 REQUIRED_PROCUREMENT = ["employer_id", "item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
@@ -180,7 +183,16 @@ def employer_jobs(employer_id):
 def notify_reminders():
     """Send a day-before SMS reminder to accepted workers for jobs happening
     tomorrow. This repo has no in-process scheduler — trigger this route
-    from an external cron (e.g. Render cron job) once a day."""
+    from an external cron (Render cron job, see render.yaml) once a day.
+
+    Gated by CRON_SECRET (sent as the X-Cron-Secret header) so a stranger
+    who finds the URL can't repeatedly trigger SMS sends at the app's
+    expense. Mirrors sms.py/id_card_ocr.py's unconfigured-is-safe pattern:
+    if CRON_SECRET isn't set (e.g. local dev), the check is skipped rather
+    than locking the route out entirely."""
+    if CRON_SECRET and request.headers.get("X-Cron-Secret") != CRON_SECRET:
+        return jsonify(error="unauthorized"), 403
+
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
     conn = get_db()
