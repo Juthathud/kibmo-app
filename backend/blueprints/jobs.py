@@ -161,6 +161,13 @@ def update_job_status(job_id):
     if new_status not in STATUS_TRANSITIONS.get(job["status"], set()):
         conn.close()
         return jsonify(error="ไม่สามารถเปลี่ยนสถานะงานนี้ได้"), 400
+    if new_status == "in_progress":
+        accepted_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM matches WHERE job_id = ? AND status = 'accepted'", (job_id,)
+        ).fetchone()["c"]
+        if accepted_count == 0:
+            conn.close()
+            return jsonify(error="ยังไม่มีลูกจ้างรับงานนี้ ไม่สามารถเริ่มงานได้"), 400
 
     conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_status, job_id))
     conn.commit()

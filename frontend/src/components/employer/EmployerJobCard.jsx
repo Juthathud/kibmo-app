@@ -196,7 +196,11 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id, job.status]);
 
-  const next = NEXT_STATUS[job.status];
+  // "เริ่มงาน" only makes sense once at least one worker has accepted —
+  // an 'open' job with 0 accepted workers can't be started (the backend
+  // rejects it too), so hide the button rather than let it show, get
+  // clicked, and 400.
+  const next = job.status === "open" && workers.length === 0 ? null : NEXT_STATUS[job.status];
 
   async function advance() {
     if (!next) return;
