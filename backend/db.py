@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 """
 
+GPS_PROXIMITY_METERS = 200
+
 # Worker onboarding-wizard fields, added incrementally as ALTER TABLE
 # statements: CREATE TABLE IF NOT EXISTS does nothing for a column added
 # after the table already exists.
@@ -90,6 +92,21 @@ MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN emergency_name TEXT",
     "ALTER TABLE users ADD COLUMN emergency_phone TEXT",
     "ALTER TABLE users ADD COLUMN emergency_relation TEXT",
+    "ALTER TABLE jobs ADD COLUMN lat REAL",
+    "ALTER TABLE jobs ADD COLUMN lng REAL",
+    "ALTER TABLE users ADD COLUMN rating_avg REAL NOT NULL DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN rating_count INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN rating_by_employer INTEGER",
+    "ALTER TABLE matches ADD COLUMN rating_by_employer_note TEXT",
+    "ALTER TABLE matches ADD COLUMN rating_by_worker INTEGER",
+    "ALTER TABLE matches ADD COLUMN rating_by_worker_note TEXT",
+    "ALTER TABLE matches ADD COLUMN checked_in INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN checkin_lat REAL",
+    "ALTER TABLE matches ADD COLUMN checkin_lng REAL",
+    "ALTER TABLE matches ADD COLUMN checkin_at TEXT",
+    "ALTER TABLE matches ADD COLUMN location_verified INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN paid INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN paid_at TEXT",
 ]
 
 # Columns the generic /api/profile/update endpoint is allowed to touch —
@@ -112,7 +129,133 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Let concurrent writers (e.g. two workers accepting the same job at
+    # once) block and wait for each other's transaction instead of
+    # immediately raising "database is locked".
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
+
+
+# SQLite has no ALTER TABLE ... DROP/MODIFY CONSTRAINT, so widening a CHECK
+# means rebuilding the table. These are the full, explicit target schemas
+# (every column SCHEMA + MIGRATIONS produce) with the CHECK on role/status
+# simply omitted — deliberately hand-written rather than introspected from
+# `CREATE TABLE new AS SELECT * FROM old`, which silently drops every
+# column's type/DEFAULT/PRIMARY KEY (a real bug caught in testing: it left
+# `id` non-autoincrementing and `rating_avg` etc. defaulting to NULL instead
+# of 0). The app already validates role/status in Python before every
+# write, so losing the CHECK itself is fine — UNIQUE(phone) is restored
+# explicitly since that one is worth keeping at the DB level.
+_USERS_REBUILD_DDL = """
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT NOT NULL,
+    name TEXT,
+    role TEXT,
+    profile_complete INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    postal_code TEXT, province TEXT, district TEXT, subdistrict TEXT, address TEXT,
+    military_status TEXT,
+    has_vehicle INTEGER NOT NULL DEFAULT 0,
+    vehicle_types TEXT, referral_source TEXT, job_types TEXT,
+    rate_min INTEGER, rate_max INTEGER,
+    avail_time_from TEXT, avail_time_to TEXT,
+    avail_anytime INTEGER NOT NULL DEFAULT 0,
+    avail_days TEXT, interested_categories TEXT, work_areas TEXT,
+    id_card_url TEXT, bank_account_url TEXT,
+    onboarding_complete INTEGER NOT NULL DEFAULT 0,
+    profile_photo_url TEXT, title_prefix TEXT, first_name TEXT, last_name TEXT,
+    nickname TEXT, gender TEXT, birth_date TEXT,
+    weight_kg REAL, height_cm REAL,
+    is_disabled INTEGER NOT NULL DEFAULT 0,
+    email TEXT, line_id TEXT,
+    phone_visible_on_resume INTEGER NOT NULL DEFAULT 0,
+    emergency_name TEXT, emergency_phone TEXT, emergency_relation TEXT,
+    rating_avg REAL NOT NULL DEFAULT 0,
+    rating_count INTEGER NOT NULL DEFAULT 0
+)
+"""
+
+_JOBS_REBUILD_DDL = """
+CREATE TABLE jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employer_id INTEGER NOT NULL,
+    job_type TEXT NOT NULL DEFAULT 'labor',
+    category TEXT NOT NULL,
+    pay_type TEXT NOT NULL DEFAULT 'daily',
+    rate INTEGER NOT NULL,
+    headcount INTEGER NOT NULL,
+    days INTEGER NOT NULL DEFAULT 1,
+    location TEXT NOT NULL,
+    job_date TEXT NOT NULL,
+    gps_auto_checkin INTEGER NOT NULL DEFAULT 0,
+    item_list TEXT,
+    budget INTEGER,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    lat REAL,
+    lng REAL
+)
+"""
+
+
+def _rebuild_table(conn, table_name, target_ddl):
+    conn.execute("PRAGMA foreign_keys = OFF")
+    # By default `ALTER TABLE ... RENAME TO` also rewrites REFERENCES
+    # clauses in every OTHER table that points at the renamed one — so
+    # renaming users -> users__old silently repoints matches.worker_id's
+    # REFERENCES users(id) to the soon-to-be-dropped users__old, breaking FK
+    # enforcement on every future INSERT. legacy_alter_table disables that
+    # rewrite so other tables keep referencing the table by its real name.
+    conn.execute("PRAGMA legacy_alter_table = ON")
+    columns = [c["name"] for c in conn.execute(f"PRAGMA table_info({table_name})").fetchall()]
+    col_list = ", ".join(columns)
+    conn.execute(f"ALTER TABLE {table_name} RENAME TO {table_name}__old")
+    conn.execute(target_ddl)
+    conn.execute(f"INSERT INTO {table_name} ({col_list}) SELECT {col_list} FROM {table_name}__old")
+    conn.execute(f"DROP TABLE {table_name}__old")
+    conn.commit()
+    conn.execute("PRAGMA legacy_alter_table = OFF")
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _table_needs_rebuild(conn, table_name, old_check_marker, sentinel_column):
+    """True if `table_name` still has the original restrictive CHECK (never
+    migrated), or if `sentinel_column` lost its DEFAULT (a previous rebuild
+    here — `CREATE ... AS SELECT` — stripped it) — either way it needs
+    (re)building against the explicit DDL above."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table_name,)
+    ).fetchone()
+    if not row:
+        return False
+    if old_check_marker in row["sql"]:
+        return True
+    col = next(
+        (c for c in conn.execute(f"PRAGMA table_info({table_name})").fetchall() if c["name"] == sentinel_column),
+        None,
+    )
+    return col is not None and col["dflt_value"] is None
+
+
+def _ensure_role_allows_both():
+    conn = get_db()
+    if _table_needs_rebuild(conn, "users", "'employer','worker')", "rating_avg"):
+        _rebuild_table(conn, "users", _USERS_REBUILD_DDL)
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone)")
+        conn.execute("UPDATE users SET rating_avg = 0 WHERE rating_avg IS NULL")
+        conn.execute("UPDATE users SET rating_count = 0 WHERE rating_count IS NULL")
+        conn.commit()
+    conn.close()
+
+
+def _ensure_job_status_allows_cancelled():
+    conn = get_db()
+    if _table_needs_rebuild(conn, "jobs", "'open','staffed','in_progress','completed')", "status"):
+        _rebuild_table(conn, "jobs", _JOBS_REBUILD_DDL)
+        conn.execute("UPDATE jobs SET status = 'open' WHERE status IS NULL")
+        conn.commit()
+    conn.close()
 
 
 def init_db():
@@ -126,3 +269,5 @@ def init_db():
                 raise
     conn.commit()
     conn.close()
+    _ensure_role_allows_both()
+    _ensure_job_status_allows_cancelled()

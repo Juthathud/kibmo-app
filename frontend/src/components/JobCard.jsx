@@ -3,6 +3,7 @@ const STATUS_LABEL = {
   staffed: "คนครบแล้ว",
   in_progress: "กำลังทำงาน",
   completed: "จบงานแล้ว",
+  cancelled: "ยกเลิกแล้ว",
 };
 
 function rateLabel(job) {

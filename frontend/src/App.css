@@ -484,6 +484,7 @@
 .jobStatus-staffed { background: #fef3c7; color: #92400e; }
 .jobStatus-in_progress { background: var(--pink-light); color: var(--pink-dark); }
 .jobStatus-completed { background: #dcfce7; color: #166534; }
+.jobStatus-cancelled { background: #f1f5f9; color: var(--muted); }
 
 .jobMatchTag {
   display: inline-block;
@@ -545,3 +546,102 @@
 .workerRowContact { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 .workerRowContact a { color: var(--pink-dark); text-decoration: none; }
 .employerJobDetail .btnPink.small { width: 100%; margin-top: 12px; }
+
+.workerRowBadges { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.miniBadge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.miniBadge.checkedIn { background: #dcfce7; color: #166534; }
+.miniBadge.notVerified { background: #fef3c7; color: #92400e; }
+.miniBadge.paid { background: #dcfce7; color: #166534; }
+.miniBadge.unpaid { background: #fee2e2; color: #991b1b; }
+.miniBadge.rating { background: var(--pink-light); color: var(--pink-dark); }
+
+.workerRowActions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.workerRowActions button {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.workerRowActions button.primary { border-color: var(--pink); color: var(--pink-dark); }
+.workerRowActions button:disabled { opacity: 0.6; }
+
+.workerProfileCard {
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.ratingStars { display: flex; gap: 4px; margin: 8px 0; }
+.ratingStars button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  padding: 0;
+  color: var(--border);
+  line-height: 1;
+}
+.ratingStars button.filled { color: var(--pink); }
+
+.filterBar { display: flex; gap: 8px; margin-bottom: 12px; }
+.filterBar .searchBox { flex: 1; margin-bottom: 0; }
+.filterBar select {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.roleTabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px 0;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.roleTabs button {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.roleTabs button.active {
+  border-color: var(--pink);
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+}
+
+.checkinBanner {
+  background: var(--pink-tint);
+  border: 1px dashed var(--pink);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--pink-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.checkinBanner button { flex-shrink: 0; }
