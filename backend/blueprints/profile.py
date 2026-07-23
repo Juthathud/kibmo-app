@@ -12,6 +12,11 @@ bp = Blueprint("profile", __name__)
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# id_card/bank_account/profile_photo uploads are meant to be photos only —
+# without this, any file extension/content-type was accepted and served
+# back unauthenticated from /uploads/<filename>.
+ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+
 
 def _normalize_phone(raw):
     return re.sub(r"\D", "", raw or "")
@@ -59,7 +64,10 @@ def upload_document():
     if doc_type not in columns or not file:
         return jsonify(error="ข้อมูลไม่ครบ"), 400
 
-    ext = Path(file.filename or "").suffix.lower() or ".jpg"
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS or not (file.mimetype or "").startswith("image/"):
+        return jsonify(error="รองรับเฉพาะไฟล์รูปภาพเท่านั้น (jpg, png, webp, heic)"), 400
+
     filename = f"{uuid.uuid4().hex}{ext}"
     file.save(UPLOAD_DIR / filename)
     url = f"/uploads/{filename}"
