@@ -453,6 +453,11 @@
 }
 .employerCard h3 { margin: 0 0 16px; font-size: 1.05rem; }
 
+.summaryStats { display: flex; gap: 10px; }
+.summaryStat { flex: 1; text-align: center; padding: 10px 6px; background: var(--bg); border-radius: var(--radius-sm); }
+.summaryStatNum { font-size: 1.3rem; font-weight: 800; color: var(--pink-dark); font-variant-numeric: tabular-nums; }
+.summaryStatLbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
 .employerJobsSection { margin-bottom: 24px; }
 .employerJobsSection h3 { font-size: 1.05rem; margin-bottom: 12px; }
 

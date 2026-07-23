@@ -6,6 +6,7 @@ import EmployerJobCard from "./EmployerJobCard";
 export default function EmployerHome({ user, onLogout }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
 
   async function loadJobs() {
     setLoading(true);
@@ -14,8 +15,14 @@ export default function EmployerHome({ user, onLogout }) {
     setLoading(false);
   }
 
+  async function loadSummary() {
+    const data = await api("GET", `/api/employers/${user.id}/spending-summary`);
+    setSummary(data);
+  }
+
   useEffect(() => {
     loadJobs();
+    loadSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -32,7 +39,27 @@ export default function EmployerHome({ user, onLogout }) {
         <button type="button" className="btnOutlineDark small" onClick={onLogout}>ออกจากระบบ</button>
       </div>
 
-      <JobPostForm employerId={user.id} onPosted={loadJobs} />
+      {summary && (
+        <div className="employerCard">
+          <h3>สรุปยอดใช้จ่าย</h3>
+          <div className="summaryStats">
+            <div className="summaryStat">
+              <div className="summaryStatNum">{summary.total_spent.toLocaleString()}</div>
+              <div className="summaryStatLbl">บาท ใช้จ่ายไปแล้ว</div>
+            </div>
+            <div className="summaryStat">
+              <div className="summaryStatNum">{summary.jobs_completed}</div>
+              <div className="summaryStatLbl">งานที่จบแล้ว</div>
+            </div>
+            <div className="summaryStat">
+              <div className="summaryStatNum">{summary.workers_hired}</div>
+              <div className="summaryStatLbl">ลูกจ้างที่เคยจ้าง</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <JobPostForm employerId={user.id} onPosted={() => { loadJobs(); loadSummary(); }} />
 
       <div className="employerJobsSection">
         <h3>งานของฉัน</h3>
@@ -43,7 +70,7 @@ export default function EmployerHome({ user, onLogout }) {
             key={job.id}
             job={job}
             employerId={user.id}
-            onChanged={loadJobs}
+            onChanged={() => { loadJobs(); loadSummary(); }}
           />
         ))}
       </div>

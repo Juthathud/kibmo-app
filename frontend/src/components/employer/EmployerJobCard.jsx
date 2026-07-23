@@ -47,15 +47,26 @@ function WorkerProfile({ workerId }) {
       ประเภทงานที่สนใจ: <CategoryLabel csv={profile.interested_categories} />
       <br />
       พื้นที่ทำงาน: <CategoryLabel csv={profile.work_areas} />
+      {profile.no_show_count > 0 && (
+        <>
+          <br />
+          <span style={{ color: "var(--danger)", fontWeight: 700 }}>
+            ⚠ เคยไม่มาตามนัด {profile.no_show_count} ครั้ง
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
-function WorkerRow({ w, jobCompleted, employerId, onChanged }) {
+function WorkerRow({ w, jobStatus, employerId, onChanged }) {
   const [showProfile, setShowProfile] = useState(false);
   const [rating, setRating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  const jobCompleted = jobStatus === "completed";
+  const canReportNoShow = ["staffed", "in_progress"].includes(jobStatus) && !w.checked_in && !w.no_show;
 
   async function markPaid() {
     setBusy(true);
@@ -76,6 +87,20 @@ function WorkerRow({ w, jobCompleted, employerId, onChanged }) {
     try {
       await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value, employer_id: employerId });
       setRating(false);
+      onChanged();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reportNoShow() {
+    if (!window.confirm(`ยืนยันว่า ${workerName(w)} ไม่มาตามนัดจริง? การแจ้งนี้ยกเลิกไม่ได้`)) return;
+    setBusy(true);
+    setErr("");
+    try {
+      await api("POST", `/api/matches/${w.match_id}/no-show`, { employer_id: employerId });
       onChanged();
     } catch (e) {
       setErr(e.message);
@@ -115,12 +140,18 @@ function WorkerRow({ w, jobCompleted, employerId, onChanged }) {
               </span>
             )}
             {w.rating_by_employer && <span className="miniBadge rating">ให้คะแนนแล้ว {w.rating_by_employer} ★</span>}
+            {!!w.no_show && <span className="miniBadge unpaid">แจ้งไม่มาตามนัดแล้ว</span>}
           </div>
         </div>
         <div className="workerRowActions">
           <button type="button" onClick={() => setShowProfile((s) => !s)}>
             {showProfile ? "ซ่อนโปรไฟล์" : "ดูโปรไฟล์"}
           </button>
+          {canReportNoShow && (
+            <button type="button" disabled={busy} onClick={reportNoShow}>
+              แจ้งไม่มาตามนัด
+            </button>
+          )}
           {jobCompleted && !w.paid && (
             <button type="button" className="primary" disabled={busy} onClick={markPaid}>
               จ่ายเงินแล้ว
@@ -145,6 +176,7 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [err, setErr] = useState("");
 
   async function loadWorkers() {
@@ -213,6 +245,20 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     );
   }
 
+  if (duplicating) {
+    return (
+      <JobPostForm
+        employerId={employerId}
+        duplicateFrom={job}
+        onPosted={() => {
+          setDuplicating(false);
+          onChanged();
+        }}
+        onCancelEdit={() => setDuplicating(false)}
+      />
+    );
+  }
+
   return (
     <JobCard
       job={job}
@@ -235,6 +281,13 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
               </button>
             </div>
           )}
+          {(job.status === "completed" || job.status === "cancelled") && (
+            <div className="jobCardActions" style={{ marginBottom: 12 }}>
+              <button type="button" className="btnOutlinePink small" onClick={() => setDuplicating(true)}>
+                โพสต์งานนี้อีกครั้ง
+              </button>
+            </div>
+          )}
 
           {job.status !== "cancelled" && (
             <>
@@ -251,7 +304,7 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
                 <WorkerRow
                   key={w.id}
                   w={w}
-                  jobCompleted={job.status === "completed"}
+                  jobStatus={job.status}
                   employerId={employerId}
                   onChanged={() => {
                     loadWorkers();

@@ -179,10 +179,36 @@ def employer_jobs(employer_id):
     return jsonify(jobs=[_serialize(j) for j in jobs])
 
 
+@bp.route("/api/employers/<int:employer_id>/spending-summary")
+def spending_summary(employer_id):
+    conn = get_db()
+    completed = conn.execute(
+        "SELECT * FROM jobs WHERE employer_id = ? AND status = 'completed'", (employer_id,)
+    ).fetchall()
+    job_ids = [j["id"] for j in completed]
+
+    workers_hired = 0
+    if job_ids:
+        placeholders = ",".join("?" * len(job_ids))
+        workers_hired = conn.execute(
+            f"""SELECT COUNT(DISTINCT worker_id) AS c FROM matches
+                WHERE job_id IN ({placeholders}) AND status = 'accepted'""",
+            job_ids,
+        ).fetchone()["c"]
+    conn.close()
+
+    return jsonify(
+        total_spent=sum(job_amount(j) for j in completed),
+        jobs_completed=len(completed),
+        workers_hired=workers_hired,
+    )
+
+
 @bp.route("/api/jobs/notify-reminders", methods=["POST"])
 def notify_reminders():
-    """Send a day-before SMS reminder to accepted workers for jobs happening
-    tomorrow. This repo has no in-process scheduler — trigger this route
+    """Send a day-before SMS reminder for jobs happening tomorrow — to each
+    accepted worker individually, and one summary SMS per job to the
+    employer. This repo has no in-process scheduler — trigger this route
     from an external cron (Render cron job, see render.yaml) once a day.
 
     Gated by CRON_SECRET (sent as the X-Cron-Secret header) so a stranger
@@ -196,7 +222,7 @@ def notify_reminders():
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
     conn = get_db()
-    rows = conn.execute(
+    worker_rows = conn.execute(
         """SELECT j.category, j.job_date, j.location, u.phone, u.nickname, u.name
            FROM jobs j
            JOIN matches m ON m.job_id = j.id AND m.status = 'accepted'
@@ -204,9 +230,20 @@ def notify_reminders():
            WHERE j.job_date = ? AND j.status IN ('staffed', 'in_progress')""",
         (tomorrow,),
     ).fetchall()
+
+    employer_rows = conn.execute(
+        """SELECT j.category, j.job_date, j.location, e.phone,
+                  COUNT(m.id) AS worker_count
+           FROM jobs j
+           JOIN users e ON e.id = j.employer_id
+           JOIN matches m ON m.job_id = j.id AND m.status = 'accepted'
+           WHERE j.job_date = ? AND j.status IN ('staffed', 'in_progress')
+           GROUP BY j.id""",
+        (tomorrow,),
+    ).fetchall()
     conn.close()
 
-    for row in rows:
+    for row in worker_rows:
         name = row["nickname"] or row["name"] or "คุณ"
         sms.send(
             row["phone"],
@@ -214,7 +251,14 @@ def notify_reminders():
             f"ที่ {row['location']} - กีบหมู แมนเพาเวอร์",
         )
 
-    return jsonify(ok=True, notified=len(rows))
+    for row in employer_rows:
+        sms.send(
+            row["phone"],
+            f"แจ้งเตือน: พรุ่งนี้ ({row['job_date']}) มีงาน {row['category']} ที่ {row['location']} "
+            f"กับลูกจ้าง {row['worker_count']} คนที่ยืนยันแล้ว - กีบหมู แมนเพาเวอร์",
+        )
+
+    return jsonify(ok=True, workers_notified=len(worker_rows), employers_notified=len(employer_rows))
 
 
 def _validate_editable_fields(updates):

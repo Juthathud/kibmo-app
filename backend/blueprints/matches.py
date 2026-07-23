@@ -65,7 +65,7 @@ def job_workers(job_id):
         """SELECT u.id, u.name, u.first_name, u.last_name, u.nickname,
                   u.phone, u.line_id, u.profile_photo_url, u.rating_avg, u.rating_count,
                   m.id AS match_id, m.created_at, m.checked_in, m.location_verified,
-                  m.paid, m.paid_at, m.rating_by_employer
+                  m.paid, m.paid_at, m.rating_by_employer, m.no_show
            FROM matches m
            JOIN users u ON u.id = m.worker_id
            WHERE m.job_id = ? AND m.status = 'accepted'
@@ -103,6 +103,7 @@ def worker_profile(worker_id):
             "work_areas": worker["work_areas"],
             "rating_avg": worker["rating_avg"],
             "rating_count": worker["rating_count"],
+            "no_show_count": worker["no_show_count"],
         }
     )
 
@@ -339,6 +340,41 @@ def mark_paid(match_id):
         worker["phone"],
         f"คุณได้รับเงินค่าจ้าง {amount} บาท จากงาน {job['category']} เรียบร้อยแล้ว - กีบหมู แมนเพาเวอร์",
     )
+    return jsonify(ok=True)
+
+
+@bp.route("/api/matches/<int:match_id>/no-show", methods=["POST"])
+def mark_no_show(match_id):
+    """Employer flags a worker who never showed up. Blocked once the worker
+    has actually checked in (that's evidence they did show), and can only
+    be reported once per match — it's a factual record, not a retractable
+    complaint. Increments users.no_show_count, surfaced on the worker's
+    profile so other employers can weigh it before confirming them."""
+    data = request.get_json(silent=True) or {}
+    employer_id = data.get("employer_id")
+    if employer_id is None:
+        return jsonify(error="กรุณาระบุ employer_id"), 400
+
+    conn = get_db()
+    match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if not match or match["status"] != "accepted":
+        conn.close()
+        return jsonify(error="ไม่พบการจับคู่งานนี้"), 404
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
+    if job["employer_id"] != employer_id:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์แจ้งเรื่องนี้"), 403
+    if match["no_show"]:
+        conn.close()
+        return jsonify(error="แจ้งไปแล้ว"), 400
+    if match["checked_in"]:
+        conn.close()
+        return jsonify(error="ลูกจ้างเช็คอินแล้ว ไม่สามารถแจ้งว่าไม่มาได้"), 400
+
+    conn.execute("UPDATE matches SET no_show = 1, no_show_at = datetime('now') WHERE id = ?", (match_id,))
+    conn.execute("UPDATE users SET no_show_count = no_show_count + 1 WHERE id = ?", (match["worker_id"],))
+    conn.commit()
+    conn.close()
     return jsonify(ok=True)
 
 

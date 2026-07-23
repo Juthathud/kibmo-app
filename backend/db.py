@@ -107,6 +107,9 @@ MIGRATIONS = [
     "ALTER TABLE matches ADD COLUMN location_verified INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid_at TEXT",
+    "ALTER TABLE matches ADD COLUMN no_show INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN no_show_at TEXT",
+    "ALTER TABLE users ADD COLUMN no_show_count INTEGER NOT NULL DEFAULT 0",
 ]
 
 # Columns the generic /api/profile/update endpoint is allowed to touch —
