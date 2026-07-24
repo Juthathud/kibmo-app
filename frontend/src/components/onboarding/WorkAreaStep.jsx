@@ -9,7 +9,7 @@ const DISTRICTS = [
   "เชียงกลาง", "เมืองน่าน", "เวียงสา", "แม่จริม",
 ];
 
-export default function WorkAreaStep({ phone, onNext, onSkip }) {
+export default function WorkAreaStep({ onNext, onSkip }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -25,7 +25,7 @@ export default function WorkAreaStep({ phone, onNext, onSkip }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, { work_areas: selected });
+      await patchProfile({ work_areas: selected });
       onNext();
     } catch (e) {
       setErr(e.message);

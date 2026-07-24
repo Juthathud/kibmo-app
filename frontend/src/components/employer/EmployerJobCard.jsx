@@ -59,7 +59,7 @@ function WorkerProfile({ workerId }) {
   );
 }
 
-function WorkerRow({ w, jobStatus, employerId, onChanged }) {
+function WorkerRow({ w, jobStatus, onChanged }) {
   const [showProfile, setShowProfile] = useState(false);
   const [rating, setRating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,7 +72,7 @@ function WorkerRow({ w, jobStatus, employerId, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${w.match_id}/mark-paid`, { employer_id: employerId });
+      await api("POST", `/api/matches/${w.match_id}/mark-paid`);
       onChanged();
     } catch (e) {
       setErr(e.message);
@@ -85,7 +85,7 @@ function WorkerRow({ w, jobStatus, employerId, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value, employer_id: employerId });
+      await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value });
       setRating(false);
       onChanged();
     } catch (e) {
@@ -100,7 +100,7 @@ function WorkerRow({ w, jobStatus, employerId, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${w.match_id}/no-show`, { employer_id: employerId });
+      await api("POST", `/api/matches/${w.match_id}/no-show`);
       onChanged();
     } catch (e) {
       setErr(e.message);
@@ -171,7 +171,7 @@ function WorkerRow({ w, jobStatus, employerId, onChanged }) {
   );
 }
 
-export default function EmployerJobCard({ job, employerId, onChanged }) {
+export default function EmployerJobCard({ job, onChanged }) {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -182,7 +182,7 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
   async function loadWorkers() {
     setLoading(true);
     try {
-      const data = await api("GET", `/api/jobs/${job.id}/workers?employer_id=${employerId}`);
+      const data = await api("GET", `/api/jobs/${job.id}/workers`);
       setWorkers(data.workers);
     } catch (e) {
       setErr(e.message);
@@ -208,7 +208,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     setErr("");
     try {
       await api("POST", `/api/jobs/${job.id}/status`, {
-        employer_id: employerId,
         status: next.status,
       });
       onChanged();
@@ -224,7 +223,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     setErr("");
     try {
       await api("POST", `/api/jobs/${job.id}/status`, {
-        employer_id: employerId,
         status: "cancelled",
       });
       onChanged();
@@ -238,7 +236,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
   if (editing) {
     return (
       <JobPostForm
-        employerId={employerId}
         job={job}
         onSaved={() => {
           setEditing(false);
@@ -252,7 +249,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
   if (duplicating) {
     return (
       <JobPostForm
-        employerId={employerId}
         duplicateFrom={job}
         onPosted={() => {
           setDuplicating(false);
@@ -304,7 +300,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
                   key={w.id}
                   w={w}
                   jobStatus={job.status}
-                  employerId={employerId}
                   onChanged={() => {
                     loadWorkers();
                     onChanged();

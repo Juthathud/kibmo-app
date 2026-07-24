@@ -44,7 +44,7 @@ function formFromJob(job) {
 // Used to post a brand-new job, to edit one that's still 'open' (job/onSaved
 // given), or to re-post an old job under a new date (duplicateFrom given —
 // same fields prefilled except job_date, but still a POST like a fresh job).
-export default function JobPostForm({ employerId, onPosted, job, onSaved, onCancelEdit, duplicateFrom }) {
+export default function JobPostForm({ onPosted, job, onSaved, onCancelEdit, duplicateFrom }) {
   const isEditing = !!job;
   const isDuplicating = !isEditing && !!duplicateFrom;
   const initial = isEditing
@@ -87,7 +87,6 @@ export default function JobPostForm({ employerId, onPosted, job, onSaved, onCanc
     setSaving(true);
     setErr("");
     const payload = {
-      employer_id: employerId,
       job_type: form.job_type,
       category: form.category,
       pay_type: form.pay_type,

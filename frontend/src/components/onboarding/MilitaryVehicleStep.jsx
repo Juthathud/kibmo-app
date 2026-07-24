@@ -12,7 +12,7 @@ const REFERRALS = [
   "Lemon8", "Instagram", "Play Store", "เพื่อน/คนรู้จัก", "Tiktok", "ช่องทางอื่นๆ",
 ];
 
-export default function MilitaryVehicleStep({ phone, onNext, onSkip }) {
+export default function MilitaryVehicleStep({ onNext, onSkip }) {
   const [militaryStatus, setMilitaryStatus] = useState("");
   const [hasVehicle, setHasVehicle] = useState(null);
   const [vehicleTypes, setVehicleTypes] = useState([]);
@@ -28,7 +28,7 @@ export default function MilitaryVehicleStep({ phone, onNext, onSkip }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, {
+      await patchProfile({
         military_status: militaryStatus,
         has_vehicle: hasVehicle ? 1 : 0,
         vehicle_types: hasVehicle ? vehicleTypes : [],

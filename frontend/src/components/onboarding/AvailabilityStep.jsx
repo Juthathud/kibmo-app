@@ -6,7 +6,7 @@ const DAYS = [
   ["thu", "พฤหัสบดี"], ["fri", "ศุกร์"], ["sat", "เสาร์"], ["sun", "อาทิตย์"],
 ];
 
-export default function AvailabilityStep({ phone, onNext, onSkip }) {
+export default function AvailabilityStep({ onNext, onSkip }) {
   const [jobTypes, setJobTypes] = useState([]);
   const [rateMin, setRateMin] = useState("");
   const [rateMax, setRateMax] = useState("");
@@ -25,7 +25,7 @@ export default function AvailabilityStep({ phone, onNext, onSkip }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, {
+      await patchProfile({
         job_types: jobTypes,
         rate_min: rateMin ? Number(rateMin) : null,
         rate_max: rateMax ? Number(rateMax) : null,

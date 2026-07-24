@@ -7,7 +7,7 @@ const CATEGORIES = [
 
 const MAX_SELECTED = 3;
 
-export default function CategoriesStep({ phone, onNext, onSkip }) {
+export default function CategoriesStep({ onNext, onSkip }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]);
   const [expanded, setExpanded] = useState([]);
@@ -38,7 +38,7 @@ export default function CategoriesStep({ phone, onNext, onSkip }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, { interested_categories: selected });
+      await patchProfile({ interested_categories: selected });
       onNext();
     } catch (e) {
       setErr(e.message);

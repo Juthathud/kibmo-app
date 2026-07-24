@@ -3,7 +3,7 @@ import { api } from "../../api";
 import JobCard from "../JobCard";
 import RatingStars from "../RatingStars";
 
-function AcceptedJobActions({ job, workerId, onChanged }) {
+function AcceptedJobActions({ job, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [rating, setRating] = useState(false);
   const [err, setErr] = useState("");
@@ -23,7 +23,6 @@ function AcceptedJobActions({ job, workerId, onChanged }) {
           await api("POST", `/api/matches/${job.match_id}/checkin`, {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-            worker_id: workerId,
           });
           onChanged();
         } catch (e) {
@@ -43,7 +42,7 @@ function AcceptedJobActions({ job, workerId, onChanged }) {
     setBusy(true);
     setErr("");
     try {
-      await api("POST", `/api/matches/${job.match_id}/rate`, { rater: "worker", rating: value, worker_id: workerId });
+      await api("POST", `/api/matches/${job.match_id}/rate`, { rater: "worker", rating: value });
       setRating(false);
       onChanged();
     } catch (e) {
@@ -106,7 +105,7 @@ export default function WorkerHome({ user, onLogout }) {
     if (category) params.set("category", category);
     if (location) params.set("location", location);
     const qs = params.toString();
-    const data = await api("GET", `/api/workers/${user.id}/jobs${qs ? `?${qs}` : ""}`);
+    const data = await api("GET", `/api/workers/jobs${qs ? `?${qs}` : ""}`);
     setAvailable(data.available);
     setAccepted(data.accepted);
     setLoading(false);
@@ -121,7 +120,7 @@ export default function WorkerHome({ user, onLogout }) {
     setBusyId(jobId);
     setErr("");
     try {
-      await api("POST", "/api/matches", { worker_id: user.id, job_id: jobId, status });
+      await api("POST", "/api/matches", { job_id: jobId, status });
       await load();
     } catch (e) {
       setErr(e.message);
@@ -153,7 +152,7 @@ export default function WorkerHome({ user, onLogout }) {
           <JobCard
             key={job.id}
             job={job}
-            actions={<AcceptedJobActions job={job} workerId={user.id} onChanged={load} />}
+            actions={<AcceptedJobActions job={job} onChanged={load} />}
           />
         ))}
       </div>

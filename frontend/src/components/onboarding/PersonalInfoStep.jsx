@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { patchProfile, uploadDocument, assetUrl } from "../../api";
 
-export default function PersonalInfoStep({ phone, onNext, onSkip, prefill }) {
+export default function PersonalInfoStep({ onNext, onSkip, prefill }) {
   const [photoUrl, setPhotoUrl] = useState("");
   const [titlePrefix, setTitlePrefix] = useState(prefill?.title_prefix || "นาย");
   const [firstName, setFirstName] = useState(prefill?.first_name || "");
@@ -20,7 +20,7 @@ export default function PersonalInfoStep({ phone, onNext, onSkip, prefill }) {
   async function handlePhoto(file) {
     if (!file) return;
     try {
-      const { url } = await uploadDocument(phone, "profile_photo", file);
+      const { url } = await uploadDocument("profile_photo", file);
       setPhotoUrl(url);
     } catch (e) {
       setErr(e.message);
@@ -31,7 +31,7 @@ export default function PersonalInfoStep({ phone, onNext, onSkip, prefill }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, {
+      await patchProfile({
         title_prefix: titlePrefix,
         first_name: firstName,
         last_name: lastName,

@@ -10,13 +10,13 @@ export default function EmployerHome({ user, onLogout }) {
 
   async function loadJobs() {
     setLoading(true);
-    const { jobs } = await api("GET", `/api/employers/${user.id}/jobs`);
+    const { jobs } = await api("GET", "/api/employers/jobs");
     setJobs(jobs);
     setLoading(false);
   }
 
   async function loadSummary() {
-    const data = await api("GET", `/api/employers/${user.id}/spending-summary`);
+    const data = await api("GET", "/api/employers/spending-summary");
     setSummary(data);
   }
 
@@ -59,7 +59,7 @@ export default function EmployerHome({ user, onLogout }) {
         </div>
       )}
 
-      <JobPostForm employerId={user.id} onPosted={() => { loadJobs(); loadSummary(); }} />
+      <JobPostForm onPosted={() => { loadJobs(); loadSummary(); }} />
 
       <div className="employerJobsSection">
         <h3>งานของฉัน</h3>
@@ -69,7 +69,6 @@ export default function EmployerHome({ user, onLogout }) {
           <EmployerJobCard
             key={job.id}
             job={job}
-            employerId={user.id}
             onChanged={() => { loadJobs(); loadSummary(); }}
           />
         ))}

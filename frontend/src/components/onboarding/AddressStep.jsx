@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { patchProfile } from "../../api";
 
-export default function AddressStep({ phone, onNext, onSkip, prefill }) {
+export default function AddressStep({ onNext, onSkip, prefill }) {
   const [form, setForm] = useState({
     postal_code: "",
     province: prefill?.province || "",
@@ -20,7 +20,7 @@ export default function AddressStep({ phone, onNext, onSkip, prefill }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, form);
+      await patchProfile(form);
       onNext();
     } catch (e) {
       setErr(e.message);
