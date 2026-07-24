@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 
 import sms
 from db import GPS_PROXIMITY_METERS, get_db
-from helpers import haversine_meters, job_amount, job_filters
+from helpers import current_user, haversine_meters, job_amount, job_filters
 
 bp = Blueprint("matches", __name__)
 
@@ -10,12 +10,11 @@ bp = Blueprint("matches", __name__)
 @bp.route("/api/workers/<int:worker_id>/jobs")
 def worker_jobs(worker_id):
     conn = get_db()
-    worker = conn.execute(
-        "SELECT * FROM users WHERE id = ? AND role IN ('worker','both')", (worker_id,)
-    ).fetchone()
-    if not worker:
+    caller = current_user(conn)
+    if not caller or caller["id"] != worker_id or caller["role"] not in ("worker", "both"):
         conn.close()
         return jsonify(error="ไม่พบลูกจ้างนี้"), 404
+    worker = caller
 
     clauses, params = job_filters(request.args)
     where_extra = (" AND " + " AND ".join(clauses)) if clauses else ""
@@ -48,16 +47,16 @@ def worker_jobs(worker_id):
 
 @bp.route("/api/jobs/<int:job_id>/workers")
 def job_workers(job_id):
-    employer_id = request.args.get("employer_id", type=int)
-    if employer_id is None:
-        return jsonify(error="กรุณาระบุ employer_id"), 400
-
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
         conn.close()
         return jsonify(error="ไม่พบงานนี้"), 404
-    if job["employer_id"] != employer_id:
+    if job["employer_id"] != caller["id"]:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์ดูข้อมูลนี้"), 403
 
@@ -110,19 +109,20 @@ def worker_profile(worker_id):
 @bp.route("/api/matches", methods=["POST"])
 def respond_to_job():
     data = request.get_json(force=True)
-    worker_id = data.get("worker_id")
     job_id = data.get("job_id")
     status = data.get("status")
     if status not in ("accepted", "declined"):
         return jsonify(error="สถานะไม่ถูกต้อง"), 400
 
     conn = get_db()
-    worker = conn.execute(
-        "SELECT * FROM users WHERE id = ? AND role IN ('worker','both')", (worker_id,)
-    ).fetchone()
-    if not worker:
+    # The worker responding is whoever the token belongs to, not whatever
+    # worker_id the client sends — otherwise anyone could accept/decline a
+    # job on another worker's behalf.
+    worker = current_user(conn)
+    if not worker or worker["role"] not in ("worker", "both"):
         conn.close()
         return jsonify(error="ไม่พบลูกจ้างนี้"), 404
+    worker_id = worker["id"]
 
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
@@ -190,10 +190,20 @@ def checkin(match_id):
         return jsonify(error="ไม่พบตำแหน่ง GPS"), 400
 
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match or match["status"] != "accepted":
         conn.close()
         return jsonify(error="ไม่พบการจับคู่งานนี้"), 404
+    if match["worker_id"] != caller["id"]:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์เช็คอินงานนี้"), 403
+    if match["checked_in"]:
+        conn.close()
+        return jsonify(ok=True, location_verified=bool(match["location_verified"]))
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
     if job["status"] not in ("staffed", "in_progress"):
         conn.close()
@@ -235,15 +245,16 @@ def checkin(match_id):
 @bp.route("/api/matches/<int:match_id>/rate", methods=["POST"])
 def rate_match(match_id):
     data = request.get_json(force=True)
-    rater = data.get("rater")
     rating = data.get("rating")
     note = (data.get("note") or "").strip() or None
-    if rater not in ("employer", "worker"):
-        return jsonify(error="ผู้ให้คะแนนไม่ถูกต้อง"), 400
     if rating not in (1, 2, 3, 4, 5):
         return jsonify(error="คะแนนต้องอยู่ระหว่าง 1-5"), 400
 
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match:
         conn.close()
@@ -252,6 +263,17 @@ def rate_match(match_id):
     if not job or job["status"] != "completed":
         conn.close()
         return jsonify(error="ให้คะแนนได้หลังงานจบแล้วเท่านั้น"), 400
+
+    # Which side is rating is derived from who's calling, not a
+    # client-supplied "rater" field — otherwise anyone could rate either
+    # side of any match.
+    if caller["id"] == job["employer_id"]:
+        rater = "employer"
+    elif caller["id"] == match["worker_id"]:
+        rater = "worker"
+    else:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์ให้คะแนนงานนี้"), 403
 
     if rater == "employer":
         if match["rating_by_employer"] is not None:
@@ -289,6 +311,10 @@ def rate_match(match_id):
 @bp.route("/api/matches/<int:match_id>/mark-paid", methods=["POST"])
 def mark_paid(match_id):
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match or match["status"] != "accepted":
         conn.close()
@@ -297,6 +323,9 @@ def mark_paid(match_id):
         conn.close()
         return jsonify(error="จ่ายเงินไปแล้ว"), 400
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
+    if job["employer_id"] != caller["id"]:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์จ่ายเงินงานนี้"), 403
     if job["status"] != "completed":
         conn.close()
         return jsonify(error="จ่ายเงินได้หลังงานจบแล้วเท่านั้น"), 400

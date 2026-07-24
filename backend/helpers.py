@@ -1,5 +1,21 @@
 import math
 
+from flask import request
+
+
+def current_user(conn):
+    """Resolve the caller from the Authorization: Bearer <token> header
+    issued at login/register (see auth.verify_otp). Returns the users row,
+    or None if the header is missing or the token doesn't match anyone —
+    endpoints that need to know who's really asking (not just trust a
+    client-supplied id) should check this rather than reading an id
+    straight out of the request body/query string."""
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:].strip() if auth.startswith("Bearer ") else ""
+    if not token:
+        return None
+    return conn.execute("SELECT * FROM users WHERE auth_token = ?", (token,)).fetchone()
+
 
 def job_amount(job):
     return job["rate"] if job["pay_type"] == "lump_sum" else job["rate"] * job["days"]

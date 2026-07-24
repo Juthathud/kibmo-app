@@ -4,12 +4,12 @@ from flask import Blueprint, jsonify, request
 
 import sms
 from db import get_db
-from helpers import job_amount, job_filters
+from helpers import current_user, job_amount, job_filters
 
 bp = Blueprint("jobs", __name__)
 
-REQUIRED_LABOR = ["employer_id", "category", "rate", "headcount", "days", "location", "job_date"]
-REQUIRED_PROCUREMENT = ["employer_id", "item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
+REQUIRED_LABOR = ["category", "rate", "headcount", "days", "location", "job_date"]
+REQUIRED_PROCUREMENT = ["item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
 
 JOB_TYPES = ("labor", "procurement")
 PAY_TYPES = ("daily", "lump_sum")
@@ -51,10 +51,11 @@ def create_job():
         return jsonify(error="ประเภทค่าจ้างไม่ถูกต้อง"), 400
 
     conn = get_db()
-    employer = conn.execute(
-        "SELECT * FROM users WHERE id = ? AND role IN ('employer','both')", (data["employer_id"],)
-    ).fetchone()
-    if not employer:
+    # The employer posting this job is whoever the token belongs to, not
+    # whatever employer_id the client sends — otherwise anyone could post
+    # a job under another employer's account.
+    employer = current_user(conn)
+    if not employer or employer["role"] not in ("employer", "both"):
         conn.close()
         return jsonify(error="ไม่พบนายจ้างนี้"), 404
 
@@ -90,17 +91,17 @@ def create_job():
 @bp.route("/api/jobs/<int:job_id>", methods=["PATCH"])
 def edit_job(job_id):
     data = request.get_json(force=True)
-    employer_id = data.get("employer_id")
 
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
         conn.close()
         return jsonify(error="ไม่พบงานนี้"), 404
-    if employer_id is None:
-        conn.close()
-        return jsonify(error="กรุณาระบุ employer_id"), 400
-    if job["employer_id"] != employer_id:
+    if job["employer_id"] != caller["id"]:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์แก้ไขงานนี้"), 403
     if job["status"] != "open":
@@ -142,22 +143,29 @@ STATUS_TRANSITIONS = {
 def update_job_status(job_id):
     data = request.get_json(force=True)
     new_status = data.get("status")
-    employer_id = data.get("employer_id")
 
     conn = get_db()
+    caller = current_user(conn)
+    if not caller:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
         conn.close()
         return jsonify(error="ไม่พบงานนี้"), 404
-    if employer_id is None:
-        conn.close()
-        return jsonify(error="กรุณาระบุ employer_id"), 400
-    if job["employer_id"] != employer_id:
+    if job["employer_id"] != caller["id"]:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์แก้ไขงานนี้"), 403
     if new_status not in STATUS_TRANSITIONS.get(job["status"], set()):
         conn.close()
         return jsonify(error="ไม่สามารถเปลี่ยนสถานะงานนี้ได้"), 400
+    if new_status == "in_progress":
+        accepted_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM matches WHERE job_id = ? AND status = 'accepted'", (job_id,)
+        ).fetchone()["c"]
+        if accepted_count == 0:
+            conn.close()
+            return jsonify(error="ยังไม่มีลูกจ้างรับงานนี้"), 400
 
     conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_status, job_id))
     conn.commit()
@@ -169,6 +177,10 @@ def update_job_status(job_id):
 @bp.route("/api/employers/<int:employer_id>/jobs")
 def employer_jobs(employer_id):
     conn = get_db()
+    caller = current_user(conn)
+    if not caller or caller["id"] != employer_id:
+        conn.close()
+        return jsonify(error="คุณไม่มีสิทธิ์ดูข้อมูลนี้"), 403
     jobs = conn.execute(
         "SELECT * FROM jobs WHERE employer_id = ? ORDER BY id DESC", (employer_id,)
     ).fetchall()
