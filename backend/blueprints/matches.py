@@ -194,6 +194,9 @@ def checkin(match_id):
     if not match or match["status"] != "accepted":
         conn.close()
         return jsonify(error="ไม่พบการจับคู่งานนี้"), 404
+    if match["checked_in"]:
+        conn.close()
+        return jsonify(ok=True, location_verified=bool(match["location_verified"]))
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (match["job_id"],)).fetchone()
     if job["status"] not in ("staffed", "in_progress"):
         conn.close()
