@@ -20,12 +20,16 @@
 `backend/db.py` — `_JOBS_REBUILD_DDL` (ใช้ตอนขยาย CHECK constraint ของ `jobs.status` ให้รองรับ `cancelled`) ไม่มี `REFERENCES users(id)` บนคอลัมน์ `employer_id` ต่างจาก `SCHEMA` เดิมที่มี ทำให้ทุก install ที่รันผ่านการ rebuild นี้ (`_ensure_job_status_allows_cancelled`) เสีย FK constraint ไปเงียบๆ
 **แก้:** เติม `REFERENCES users(id)` กลับเข้าไปใน DDL — มีผลกับ install ใหม่หรือ DB ที่ยังไม่เคย rebuild เท่านั้น (DB ที่ rebuild ไปแล้วจะไม่ trigger rebuild ซ้ำเพราะเงื่อนไข `_table_needs_rebuild` เช็คจาก CHECK marker/DEFAULT ไม่ได้เช็ค FK) ผลกระทบต่ำเพราะโค้ดแอปตรวจสอบ employer มีอยู่จริงก่อน insert อยู่แล้ว และไม่มีจุดไหน delete user
 
-## บั๊กที่เจอแล้วยังไม่แก้
-
-### ทั้งแอปไม่มีการยืนยันตัวตนฝั่ง server เลย — ทุก endpoint เชื่อ id ที่ client ส่งมาเฉยๆ (พบ 2026-07-24)
+### ทั้งแอปไม่มีการยืนยันตัวตนฝั่ง server เลย — ทุก endpoint เชื่อ id ที่ client ส่งมาเฉยๆ (พบ 2026-07-24, แก้ 2026-07-24)
 ไม่มี session/token ใดๆ ในระบบ — ทุก endpoint ที่ควรจำกัดสิทธิ์ (เช่น "เฉพาะนายจ้างเจ้าของงาน") แค่เทียบ `employer_id`/`worker_id` ที่ client ใส่มาใน body/query กับข้อมูลใน DB โดยไม่มีการพิสูจน์ตัวตนจริงเลย ตัวอย่างที่กระทบชัดเจน:
-- `GET /api/jobs/<job_id>/workers` (`backend/blueprints/matches.py:49-80`) เช็คว่า `employer_id` (query param ที่ client กำหนดเอง) ตรงกับ `job.employer_id` — แต่ `GET /api/jobs` (public, ไม่ต้อง login) คืน `employer_id` ของทุกงานเปิดอยู่แล้ว ใครก็ตามที่ดึงรายการงานสาธารณะแล้วเดา/ใส่ `employer_id` ที่ถูกต้องกลับเข้ามาที่ endpoint นี้ จะเห็นเบอร์โทร/LINE ID ของลูกจ้างที่ถูกรับเข้างานได้โดยไม่ต้อง login เลย
-- `POST /api/matches/<id>/rate`, `POST /api/matches/<id>/mark-paid`, `POST /api/matches/<id>/checkin` (`backend/blueprints/matches.py:235-314`, `185-232`) ไม่รับ/ตรวจ identity ของผู้เรียกเลย ใครก็ยิง request ตรงไปที่ `match_id` (เป็นเลขไล่ลำดับ เดาง่าย) แล้วให้คะแนนปลอม/สั่งจ่ายเงินปลอม (ส่ง SMS จริงไปหาลูกจ้างว่า "ได้รับเงินแล้ว")/ปลอม GPS checkin ให้ match ไหนก็ได้
-- `GET /api/employers/<employer_id>/jobs` (`backend/blueprints/jobs.py:169-176`) ไม่มีการตรวจสิทธิ์เลยแม้แต่แบบ self-report — ใครก็ดูประวัติงานทั้งหมดของนายจ้างคนไหนก็ได้ (รวมงานที่ยกเลิก/จบแล้วที่ไม่โผล่ใน public feed) แค่เดา id
+- `GET /api/jobs/<job_id>/workers` เช็คว่า `employer_id` (query param ที่ client กำหนดเอง) ตรงกับ `job.employer_id` — แต่ `GET /api/jobs` (public) คืน `employer_id` ของทุกงานเปิดอยู่แล้ว ใครก็ดึงเบอร์โทร/LINE ID ของลูกจ้างที่ถูกรับเข้างานได้โดยไม่ต้อง login
+- `POST /api/matches/<id>/rate`, `mark-paid`, `checkin` ไม่ตรวจ identity ของผู้เรียกเลย ยิง request ตรงไปที่ `match_id` (เดาง่าย) แล้วให้คะแนนปลอม/สั่งจ่ายเงินปลอม (ส่ง SMS จริง)/ปลอม GPS checkin ให้ match ไหนก็ได้
+- `GET /api/employers/<employer_id>/jobs` ไม่มีการตรวจสิทธิ์เลยแม้แต่แบบ self-report — ดูประวัติงานทั้งหมดของนายจ้างคนไหนก็ได้แค่เดา id
+- `POST /api/profile/update`, `upload-document` เชื่อ `phone` ที่ client ส่งมาเป็นตัวระบุตัวตน — ใครก็แก้โปรไฟล์/อัปโหลดเอกสารแทนคนอื่นได้ถ้ารู้เบอร์โทร
 
-**หมายเหตุ:** นี่ไม่ใช่บั๊กจุดเดียวที่แพตช์แล้วจบ แต่เป็นปัญหาเชิงสถาปัตยกรรม (ต้องออกแบบ session/token layer) — ยังไม่แก้เพราะต้องตัดสินใจร่วมกับผู้ใช้ก่อนว่าจะใช้แนวทางไหน (cookie session, bearer token ตอน login, ฯลฯ) และการแก้จะกระทบทุก endpoint/ทุก API call ฝั่ง frontend
+**แก้:** เพิ่ม bearer-token auth layer แบบเรียบง่าย ตรงกับ pattern เดิมของโปรเจกต์ (ไม่มี session table แยก ไม่มี expiry/refresh — เกินความจำเป็นสำหรับสเกลนี้):
+- `users.auth_token` (คอลัมน์ใหม่) เก็บ token ที่สุ่มด้วย `secrets.token_hex(32)` ออกให้ตอน `verify_otp()` สำเร็จทุกครั้ง (login ใหม่ = token เก่าใช้ไม่ได้ — 1 session ที่ active ต่อบัญชี)
+- `helpers.current_user(conn)` อ่าน header `Authorization: Bearer <token>` แล้ว lookup user จริงจาก DB แทนการเชื่อ id ที่ client ส่งมา
+- ทุก endpoint ที่กระทบ (`create_job`, `edit_job`, `update_job_status`, `employer_jobs`, `worker_jobs`, `job_workers`, `respond_to_job`, `checkin`, `rate_match` — คำนวณ `rater` จากตัวตนผู้เรียกเองแทนที่จะเชื่อ field `rater` จาก client, `mark_paid`, `update_profile`, `upload_document`, `complete_profile`) เปลี่ยนมาใช้ `current_user()` แทนค่าที่ client ส่งมา
+- Frontend (`api.js`) แนบ header อัตโนมัติทุก request จาก `token` ที่เก็บใน `localStorage`; token ถูก persist ทันทีตั้งแต่ `verify-otp` สำเร็จ (ก่อนเช็ค `profile_complete` ด้วยซ้ำ) เพื่อให้ endpoint `/api/auth/register` เรียกแบบมี auth ได้ตั้งแต่ต้น
+- ยืนยันผ่านเบราว์เซอร์จริงครบ flow (login, สมัครสมาชิกใหม่, โพสต์งาน, รับงาน, เช็คอิน, mark-paid, ให้คะแนน) ยังทำงานถูกต้องเหมือนเดิม และยืนยันว่า request ที่ไม่มี token / token ปลอม / token ของคนอื่นถูกปฏิเสธด้วย 401/403 ตามที่ควร (ทดสอบ raw fetch ตรงๆ กับ `employer_jobs`, `job_workers`, `mark-paid`, `checkin`)
