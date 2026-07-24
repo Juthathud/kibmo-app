@@ -1,10 +1,10 @@
-import re
 import uuid
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_from_directory
 
 from db import get_db, UPDATABLE_PROFILE_FIELDS
+from helpers import current_user
 from id_card_ocr import is_configured as ocr_configured, extract_id_card
 
 bp = Blueprint("profile", __name__)
@@ -13,14 +13,9 @@ UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
-def _normalize_phone(raw):
-    return re.sub(r"\D", "", raw or "")
-
-
 @bp.route("/api/profile/update", methods=["POST"])
 def update_profile():
     data = request.get_json(force=True)
-    phone = _normalize_phone(data.get("phone"))
     fields = data.get("fields") or {}
 
     unknown = set(fields) - UPDATABLE_PROFILE_FIELDS
@@ -30,10 +25,13 @@ def update_profile():
         return jsonify(error="ไม่มีข้อมูลที่จะบันทึก"), 400
 
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+    # Identify the caller from their token, not a client-supplied phone —
+    # otherwise anyone who knows a phone number could overwrite that
+    # person's profile (including id_card_url/bank_account_url).
+    user = current_user(conn)
     if not user:
         conn.close()
-        return jsonify(error="ไม่พบผู้ใช้นี้"), 404
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
 
     # list-valued fields (checkboxes) come in as JSON arrays from the
     # frontend — store them as comma-joined text since sqlite has no array type
@@ -41,23 +39,28 @@ def update_profile():
     for key, value in fields.items():
         columns.append(f"{key} = ?")
         values.append(",".join(value) if isinstance(value, list) else value)
-    values.append(phone)
+    values.append(user["id"])
 
-    conn.execute(f"UPDATE users SET {', '.join(columns)} WHERE phone = ?", values)
+    conn.execute(f"UPDATE users SET {', '.join(columns)} WHERE id = ?", values)
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     conn.close()
     return jsonify(ok=True, user=dict(user))
 
 
 @bp.route("/api/profile/upload-document", methods=["POST"])
 def upload_document():
-    phone = _normalize_phone(request.form.get("phone"))
     doc_type = request.form.get("doc_type")
     file = request.files.get("file")
     columns = {"id_card": "id_card_url", "bank_account": "bank_account_url", "profile_photo": "profile_photo_url"}
     if doc_type not in columns or not file:
         return jsonify(error="ข้อมูลไม่ครบ"), 400
+
+    conn = get_db()
+    user = current_user(conn)
+    if not user:
+        conn.close()
+        return jsonify(error="กรุณาเข้าสู่ระบบใหม่"), 401
 
     ext = Path(file.filename or "").suffix.lower() or ".jpg"
     filename = f"{uuid.uuid4().hex}{ext}"
@@ -65,12 +68,7 @@ def upload_document():
     url = f"/uploads/{filename}"
     column = columns[doc_type]
 
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
-    if not user:
-        conn.close()
-        return jsonify(error="ไม่พบผู้ใช้นี้"), 404
-    conn.execute(f"UPDATE users SET {column} = ? WHERE phone = ?", (url, phone))
+    conn.execute(f"UPDATE users SET {column} = ? WHERE id = ?", (url, user["id"]))
     conn.commit()
     conn.close()
     return jsonify(ok=True, url=url)

@@ -1,11 +1,13 @@
 import random
 import re
+import secrets
 import string
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request
 
 from db import get_db
+from helpers import current_user
 
 bp = Blueprint("auth", __name__)
 
@@ -81,15 +83,22 @@ def verify_otp():
     if not user:
         cur = conn.execute("INSERT INTO users (phone) VALUES (?)", (phone,))
         user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+
+    # Issue a fresh bearer token on every successful OTP verify (login or
+    # first-time signup) — this is what every other endpoint uses to know
+    # who's really calling, instead of trusting a client-supplied id.
+    # Overwriting it here means only the most recent login stays valid.
+    token = secrets.token_hex(32)
+    conn.execute("UPDATE users SET auth_token = ? WHERE id = ?", (token, user["id"]))
     conn.commit()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     conn.close()
-    return jsonify(ok=True, user=dict(user))
+    return jsonify(ok=True, user=dict(user), token=token)
 
 
 @bp.route("/api/auth/register", methods=["POST"])
 def complete_profile():
     data = request.get_json(force=True)
-    phone = _normalize_phone(data.get("phone"))
     name = (data.get("name") or "").strip()
     role = data.get("role")
     if role not in ("employer", "worker", "both"):
@@ -98,16 +107,19 @@ def complete_profile():
         return jsonify(error="กรุณากรอกชื่อ"), 400
 
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+    # Identify who's completing their profile from the token issued at
+    # verify-otp, not a client-supplied phone — otherwise anyone who knows
+    # someone else's phone number could finish registration as them.
+    user = current_user(conn)
     if not user:
         conn.close()
         return jsonify(error="ไม่พบเบอร์นี้ กรุณายืนยัน OTP ก่อน"), 404
 
     conn.execute(
-        "UPDATE users SET name = ?, role = ?, profile_complete = 1 WHERE phone = ?",
-        (name, role, phone),
+        "UPDATE users SET name = ?, role = ?, profile_complete = 1 WHERE id = ?",
+        (name, role, user["id"]),
     )
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     conn.close()
     return jsonify(ok=True, user=dict(user))

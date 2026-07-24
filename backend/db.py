@@ -107,6 +107,7 @@ MIGRATIONS = [
     "ALTER TABLE matches ADD COLUMN location_verified INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid_at TEXT",
+    "ALTER TABLE users ADD COLUMN auth_token TEXT",
 ]
 
 # Columns the generic /api/profile/update endpoint is allowed to touch —
@@ -172,7 +173,8 @@ CREATE TABLE users (
     phone_visible_on_resume INTEGER NOT NULL DEFAULT 0,
     emergency_name TEXT, emergency_phone TEXT, emergency_relation TEXT,
     rating_avg REAL NOT NULL DEFAULT 0,
-    rating_count INTEGER NOT NULL DEFAULT 0
+    rating_count INTEGER NOT NULL DEFAULT 0,
+    auth_token TEXT
 )
 """
 

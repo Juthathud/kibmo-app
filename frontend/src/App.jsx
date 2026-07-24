@@ -49,17 +49,22 @@ export default function App() {
     setOtpMeta(result);
   }
 
-  function handleVerified(verifiedUser) {
+  function handleVerified(verifiedUser, token) {
+    // Persist the token right away, even if the profile isn't complete yet
+    // — RegisterProfile's own API call needs it attached (see api.js) to
+    // prove who's finishing registration.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...verifiedUser, token }));
     if (!verifiedUser.profile_complete) {
       setStep("register");
       return;
     }
-    setUser(verifiedUser);
+    setUser({ ...verifiedUser, token });
     setStep(needsOnboarding(verifiedUser) ? "onboarding" : "home");
   }
 
   function handleRegisterDone(newUser) {
-    setUser(newUser);
+    const withToken = { ...newUser, token: loadStoredUser()?.token };
+    setUser(withToken);
     setStep(needsOnboarding(newUser) ? "onboarding" : "home");
   }
 

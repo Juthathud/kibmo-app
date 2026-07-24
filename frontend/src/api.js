@@ -1,9 +1,24 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
+// Must match App.jsx's STORAGE_KEY — that's where the token issued at
+// login/register (see auth.verify_otp) lives, attached here to every
+// call so the backend knows who's really asking.
+const STORAGE_KEY = "kibmoo_user";
+
+function authHeaders() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const token = raw ? JSON.parse(raw).token : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function api(method, url, body) {
   const res = await fetch(`${API_BASE}${url}`, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
@@ -20,7 +35,11 @@ export async function uploadDocument(phone, docType, file) {
   fd.append("phone", phone);
   fd.append("doc_type", docType);
   fd.append("file", file);
-  const res = await fetch(`${API_BASE}/api/profile/upload-document`, { method: "POST", body: fd });
+  const res = await fetch(`${API_BASE}/api/profile/upload-document`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: fd,
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "อัปโหลดไม่สำเร็จ");
   return data;
