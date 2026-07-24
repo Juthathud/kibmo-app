@@ -8,6 +8,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: CRON_SECRET
+        sync: false
 
   - type: web
     name: kibmoo-frontend
@@ -21,3 +23,22 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+  # Runs once a day at 02:00 UTC (09:00 Bangkok time) to send day-before SMS
+  # reminders for jobs happening tomorrow. Set CRON_SECRET to the same value
+  # as kibmoo-backend's (Render dashboard -> both services -> Environment)
+  # so this job is the only thing allowed to trigger the endpoint.
+  - type: cron
+    name: kibmoo-notify-reminders
+    env: python
+    plan: starter
+    schedule: "0 2 * * *"
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/cron_notify.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: BACKEND_URL
+        value: https://kibmoo-backend.onrender.com
+      - key: CRON_SECRET
+        sync: false

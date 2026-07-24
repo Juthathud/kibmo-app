@@ -105,7 +105,7 @@ export default function WorkerHome({ user, onLogout }) {
     if (category) params.set("category", category);
     if (location) params.set("location", location);
     const qs = params.toString();
-    const data = await api("GET", `/api/workers/${user.id}/jobs${qs ? `?${qs}` : ""}`);
+    const data = await api("GET", `/api/workers/jobs${qs ? `?${qs}` : ""}`);
     setAvailable(data.available);
     setAccepted(data.accepted);
     setLoading(false);
@@ -120,7 +120,7 @@ export default function WorkerHome({ user, onLogout }) {
     setBusyId(jobId);
     setErr("");
     try {
-      await api("POST", "/api/matches", { worker_id: user.id, job_id: jobId, status });
+      await api("POST", "/api/matches", { job_id: jobId, status });
       await load();
     } catch (e) {
       setErr(e.message);
@@ -169,10 +169,10 @@ export default function WorkerHome({ user, onLogout }) {
             />
           </div>
           <input
+            className="filterCategoryInput"
             placeholder="ประเภทงาน"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            style={{ maxWidth: 140, border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 10px", fontSize: "0.85rem" }}
           />
         </div>
         {!loading && available.length === 0 && <p className="empty">ไม่พบงานที่ตรงกับเงื่อนไข</p>}

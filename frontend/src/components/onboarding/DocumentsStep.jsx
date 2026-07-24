@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { patchProfile, uploadDocument, assetUrl } from "../../api";
 
-export default function DocumentsStep({ phone, onComplete, onSkip }) {
+export default function DocumentsStep({ onComplete, onSkip }) {
   const [idCardUrl, setIdCardUrl] = useState("");
   const [bankUrl, setBankUrl] = useState("");
   const [err, setErr] = useState("");
@@ -11,7 +11,7 @@ export default function DocumentsStep({ phone, onComplete, onSkip }) {
     if (!file) return;
     setErr("");
     try {
-      const { url } = await uploadDocument(phone, docType, file);
+      const { url } = await uploadDocument(docType, file);
       setUrl(url);
     } catch (e) {
       setErr(e.message);
@@ -22,7 +22,7 @@ export default function DocumentsStep({ phone, onComplete, onSkip }) {
     setFinishing(true);
     setErr("");
     try {
-      await patchProfile(phone, { onboarding_complete: 1 });
+      await patchProfile({ onboarding_complete: 1 });
       onComplete();
     } catch (e) {
       setErr(e.message);

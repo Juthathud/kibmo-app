@@ -1,15 +1,19 @@
+import os
 from datetime import date, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 import sms
 from db import get_db
 from helpers import job_amount, job_filters
+from session_auth import require_auth
 
 bp = Blueprint("jobs", __name__)
 
-REQUIRED_LABOR = ["employer_id", "category", "rate", "headcount", "days", "location", "job_date"]
-REQUIRED_PROCUREMENT = ["employer_id", "item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
+CRON_SECRET = os.environ.get("CRON_SECRET")
+
+REQUIRED_LABOR = ["category", "rate", "headcount", "days", "location", "job_date"]
+REQUIRED_PROCUREMENT = ["item_list", "budget", "rate", "headcount", "days", "location", "job_date"]
 
 JOB_TYPES = ("labor", "procurement")
 PAY_TYPES = ("daily", "lump_sum")
@@ -36,6 +40,7 @@ def list_open_jobs():
 
 
 @bp.route("/api/jobs", methods=["POST"])
+@require_auth
 def create_job():
     data = request.get_json(force=True)
     job_type = data.get("job_type") or "labor"
@@ -50,14 +55,10 @@ def create_job():
     if pay_type not in PAY_TYPES:
         return jsonify(error="ประเภทค่าจ้างไม่ถูกต้อง"), 400
 
-    conn = get_db()
-    employer = conn.execute(
-        "SELECT * FROM users WHERE id = ? AND role IN ('employer','both')", (data["employer_id"],)
-    ).fetchone()
-    if not employer:
-        conn.close()
-        return jsonify(error="ไม่พบนายจ้างนี้"), 404
+    if g.user["role"] not in ("employer", "both"):
+        return jsonify(error="บัญชีนี้ไม่ใช่นายจ้าง"), 403
 
+    conn = get_db()
     category = "จัดซื้ออุปกรณ์ตามสั่ง" if job_type == "procurement" else data["category"]
 
     cur = conn.execute(
@@ -65,7 +66,7 @@ def create_job():
                               location, job_date, gps_auto_checkin, item_list, budget, lat, lng)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
-            employer["id"],
+            g.user["id"],
             job_type,
             category,
             pay_type,
@@ -88,19 +89,16 @@ def create_job():
 
 
 @bp.route("/api/jobs/<int:job_id>", methods=["PATCH"])
+@require_auth
 def edit_job(job_id):
     data = request.get_json(force=True)
-    employer_id = data.get("employer_id")
 
     conn = get_db()
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
         conn.close()
         return jsonify(error="ไม่พบงานนี้"), 404
-    if employer_id is None:
-        conn.close()
-        return jsonify(error="กรุณาระบุ employer_id"), 400
-    if job["employer_id"] != employer_id:
+    if job["employer_id"] != g.user["id"]:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์แก้ไขงานนี้"), 403
     if job["status"] != "open":
@@ -138,53 +136,105 @@ STATUS_TRANSITIONS = {
 }
 
 
+def _apply_status_update(conn, job, new_status):
+    """Runs the state-machine + business-rule checks for a job status change
+    and applies it. Returns (updated_job_row, None) on success or
+    (None, thai_error_message) on failure. Deliberately excludes any
+    ownership check -- callers (the employer-facing route below, and the
+    admin override in blueprints/admin.py) are responsible for that."""
+    if new_status not in STATUS_TRANSITIONS.get(job["status"], set()):
+        return None, "ไม่สามารถเปลี่ยนสถานะงานนี้ได้"
+    if new_status == "in_progress":
+        accepted_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM matches WHERE job_id = ? AND status = 'accepted'", (job["id"],)
+        ).fetchone()["c"]
+        if accepted_count == 0:
+            return None, "ยังไม่มีลูกจ้างรับงานนี้ ไม่สามารถเริ่มงานได้"
+
+    conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_status, job["id"]))
+    conn.commit()
+    updated = conn.execute("SELECT * FROM jobs WHERE id = ?", (job["id"],)).fetchone()
+    return updated, None
+
+
 @bp.route("/api/jobs/<int:job_id>/status", methods=["POST"])
+@require_auth
 def update_job_status(job_id):
     data = request.get_json(force=True)
     new_status = data.get("status")
-    employer_id = data.get("employer_id")
 
     conn = get_db()
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if not job:
         conn.close()
         return jsonify(error="ไม่พบงานนี้"), 404
-    if employer_id is None:
-        conn.close()
-        return jsonify(error="กรุณาระบุ employer_id"), 400
-    if job["employer_id"] != employer_id:
+    if job["employer_id"] != g.user["id"]:
         conn.close()
         return jsonify(error="คุณไม่มีสิทธิ์แก้ไขงานนี้"), 403
-    if new_status not in STATUS_TRANSITIONS.get(job["status"], set()):
-        conn.close()
-        return jsonify(error="ไม่สามารถเปลี่ยนสถานะงานนี้ได้"), 400
 
-    conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_status, job_id))
-    conn.commit()
-    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    updated, err = _apply_status_update(conn, job, new_status)
     conn.close()
-    return jsonify(job=_serialize(job))
+    if err:
+        return jsonify(error=err), 400
+    return jsonify(job=_serialize(updated))
 
 
-@bp.route("/api/employers/<int:employer_id>/jobs")
-def employer_jobs(employer_id):
+@bp.route("/api/employers/jobs")
+@require_auth
+def employer_jobs():
     conn = get_db()
     jobs = conn.execute(
-        "SELECT * FROM jobs WHERE employer_id = ? ORDER BY id DESC", (employer_id,)
+        "SELECT * FROM jobs WHERE employer_id = ? ORDER BY id DESC", (g.user["id"],)
     ).fetchall()
     conn.close()
     return jsonify(jobs=[_serialize(j) for j in jobs])
 
 
+@bp.route("/api/employers/spending-summary")
+@require_auth
+def spending_summary():
+    conn = get_db()
+    completed = conn.execute(
+        "SELECT * FROM jobs WHERE employer_id = ? AND status = 'completed'", (g.user["id"],)
+    ).fetchall()
+    job_ids = [j["id"] for j in completed]
+
+    workers_hired = 0
+    if job_ids:
+        placeholders = ",".join("?" * len(job_ids))
+        workers_hired = conn.execute(
+            f"""SELECT COUNT(DISTINCT worker_id) AS c FROM matches
+                WHERE job_id IN ({placeholders}) AND status = 'accepted'""",
+            job_ids,
+        ).fetchone()["c"]
+    conn.close()
+
+    return jsonify(
+        total_spent=sum(job_amount(j) for j in completed),
+        jobs_completed=len(completed),
+        workers_hired=workers_hired,
+    )
+
+
 @bp.route("/api/jobs/notify-reminders", methods=["POST"])
 def notify_reminders():
-    """Send a day-before SMS reminder to accepted workers for jobs happening
-    tomorrow. This repo has no in-process scheduler — trigger this route
-    from an external cron (e.g. Render cron job) once a day."""
+    """Send a day-before SMS reminder for jobs happening tomorrow — to each
+    accepted worker individually, and one summary SMS per job to the
+    employer. This repo has no in-process scheduler — trigger this route
+    from an external cron (Render cron job, see render.yaml) once a day.
+
+    Gated by CRON_SECRET (sent as the X-Cron-Secret header) so a stranger
+    who finds the URL can't repeatedly trigger SMS sends at the app's
+    expense. Mirrors sms.py/id_card_ocr.py's unconfigured-is-safe pattern:
+    if CRON_SECRET isn't set (e.g. local dev), the check is skipped rather
+    than locking the route out entirely."""
+    if CRON_SECRET and request.headers.get("X-Cron-Secret") != CRON_SECRET:
+        return jsonify(error="unauthorized"), 403
+
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
     conn = get_db()
-    rows = conn.execute(
+    worker_rows = conn.execute(
         """SELECT j.category, j.job_date, j.location, u.phone, u.nickname, u.name
            FROM jobs j
            JOIN matches m ON m.job_id = j.id AND m.status = 'accepted'
@@ -192,9 +242,20 @@ def notify_reminders():
            WHERE j.job_date = ? AND j.status IN ('staffed', 'in_progress')""",
         (tomorrow,),
     ).fetchall()
+
+    employer_rows = conn.execute(
+        """SELECT j.category, j.job_date, j.location, e.phone,
+                  COUNT(m.id) AS worker_count
+           FROM jobs j
+           JOIN users e ON e.id = j.employer_id
+           JOIN matches m ON m.job_id = j.id AND m.status = 'accepted'
+           WHERE j.job_date = ? AND j.status IN ('staffed', 'in_progress')
+           GROUP BY j.id""",
+        (tomorrow,),
+    ).fetchall()
     conn.close()
 
-    for row in rows:
+    for row in worker_rows:
         name = row["nickname"] or row["name"] or "คุณ"
         sms.send(
             row["phone"],
@@ -202,7 +263,14 @@ def notify_reminders():
             f"ที่ {row['location']} - กีบหมู แมนเพาเวอร์",
         )
 
-    return jsonify(ok=True, notified=len(rows))
+    for row in employer_rows:
+        sms.send(
+            row["phone"],
+            f"แจ้งเตือน: พรุ่งนี้ ({row['job_date']}) มีงาน {row['category']} ที่ {row['location']} "
+            f"กับลูกจ้าง {row['worker_count']} คนที่ยืนยันแล้ว - กีบหมู แมนเพาเวอร์",
+        )
+
+    return jsonify(ok=True, workers_notified=len(worker_rows), employers_notified=len(employer_rows))
 
 
 def _validate_editable_fields(updates):

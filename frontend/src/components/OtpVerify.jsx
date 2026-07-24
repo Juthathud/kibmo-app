@@ -44,7 +44,7 @@ export default function OtpVerify({ phone, refCode, ttlSeconds, devOtp, onVerifi
     setChecking(true);
     try {
       const result = await api("POST", "/api/auth/verify-otp", { phone, otp: code });
-      onVerified(result.user);
+      onVerified(result.user, result.token);
     } catch (e) {
       setErr(e.message);
       setDigits(Array(6).fill(""));

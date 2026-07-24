@@ -21,6 +21,12 @@ CREATE TABLE IF NOT EXISTS otp_codes (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     employer_id INTEGER NOT NULL REFERENCES users(id),
@@ -46,6 +52,25 @@ CREATE TABLE IF NOT EXISTS matches (
     status TEXT NOT NULL CHECK(status IN ('accepted','declined')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(job_id, worker_id)
+);
+
+-- Admin accounts are deliberately a separate table from `users` (not a
+-- role value) so admin credentials never mix with the regular phone+OTP
+-- login, and a compromised/guessed user id can never reach admin routes.
+CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Mirrors the `sessions` table (see session_auth.py) but keyed to `admins`
+-- instead of `users`, so an admin token can never be confused with or
+-- resolved against a regular user session.
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    token TEXT PRIMARY KEY,
+    admin_id INTEGER NOT NULL REFERENCES admins(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
 
@@ -107,6 +132,10 @@ MIGRATIONS = [
     "ALTER TABLE matches ADD COLUMN location_verified INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE matches ADD COLUMN paid_at TEXT",
+    "ALTER TABLE matches ADD COLUMN no_show INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE matches ADD COLUMN no_show_at TEXT",
+    "ALTER TABLE users ADD COLUMN no_show_count INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN account_status TEXT NOT NULL DEFAULT 'active'",
 ]
 
 # Columns the generic /api/profile/update endpoint is allowed to touch —
@@ -146,6 +175,14 @@ def get_db():
 # of 0). The app already validates role/status in Python before every
 # write, so losing the CHECK itself is fine — UNIQUE(phone) is restored
 # explicitly since that one is worth keeping at the DB level.
+#
+# IMPORTANT: any MIGRATIONS entry that adds a column to users or jobs must
+# add that same column here too (jobs -> _JOBS_REBUILD_DDL below). This bit
+# a real deploy already: no_show_count was added to MIGRATIONS but not here,
+# so on a fresh database `_ensure_role_allows_both` rebuilt `users` without
+# it, then the INSERT ... SELECT crashed because the old (pre-rebuild) table
+# still had the column. On an existing database this fails loudly rather
+# than silently dropping data, but it still means the app won't come up.
 _USERS_REBUILD_DDL = """
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,7 +209,9 @@ CREATE TABLE users (
     phone_visible_on_resume INTEGER NOT NULL DEFAULT 0,
     emergency_name TEXT, emergency_phone TEXT, emergency_relation TEXT,
     rating_avg REAL NOT NULL DEFAULT 0,
-    rating_count INTEGER NOT NULL DEFAULT 0
+    rating_count INTEGER NOT NULL DEFAULT 0,
+    no_show_count INTEGER NOT NULL DEFAULT 0,
+    account_status TEXT NOT NULL DEFAULT 'active'
 )
 """
 

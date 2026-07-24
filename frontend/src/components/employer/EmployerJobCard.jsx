@@ -47,15 +47,26 @@ function WorkerProfile({ workerId }) {
       ประเภทงานที่สนใจ: <CategoryLabel csv={profile.interested_categories} />
       <br />
       พื้นที่ทำงาน: <CategoryLabel csv={profile.work_areas} />
+      {profile.no_show_count > 0 && (
+        <>
+          <br />
+          <span style={{ color: "var(--danger)", fontWeight: 700 }}>
+            ⚠ เคยไม่มาตามนัด {profile.no_show_count} ครั้ง
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
-function WorkerRow({ w, jobCompleted, onChanged }) {
+function WorkerRow({ w, jobStatus, onChanged }) {
   const [showProfile, setShowProfile] = useState(false);
   const [rating, setRating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  const jobCompleted = jobStatus === "completed";
+  const canReportNoShow = ["staffed", "in_progress"].includes(jobStatus) && !w.checked_in && !w.no_show;
 
   async function markPaid() {
     setBusy(true);
@@ -76,6 +87,20 @@ function WorkerRow({ w, jobCompleted, onChanged }) {
     try {
       await api("POST", `/api/matches/${w.match_id}/rate`, { rater: "employer", rating: value });
       setRating(false);
+      onChanged();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reportNoShow() {
+    if (!window.confirm(`ยืนยันว่า ${workerName(w)} ไม่มาตามนัดจริง? การแจ้งนี้ยกเลิกไม่ได้`)) return;
+    setBusy(true);
+    setErr("");
+    try {
+      await api("POST", `/api/matches/${w.match_id}/no-show`);
       onChanged();
     } catch (e) {
       setErr(e.message);
@@ -115,12 +140,18 @@ function WorkerRow({ w, jobCompleted, onChanged }) {
               </span>
             )}
             {w.rating_by_employer && <span className="miniBadge rating">ให้คะแนนแล้ว {w.rating_by_employer} ★</span>}
+            {!!w.no_show && <span className="miniBadge unpaid">แจ้งไม่มาตามนัดแล้ว</span>}
           </div>
         </div>
         <div className="workerRowActions">
           <button type="button" onClick={() => setShowProfile((s) => !s)}>
             {showProfile ? "ซ่อนโปรไฟล์" : "ดูโปรไฟล์"}
           </button>
+          {canReportNoShow && (
+            <button type="button" disabled={busy} onClick={reportNoShow}>
+              แจ้งไม่มาตามนัด
+            </button>
+          )}
           {jobCompleted && !w.paid && (
             <button type="button" className="primary" disabled={busy} onClick={markPaid}>
               จ่ายเงินแล้ว
@@ -140,17 +171,18 @@ function WorkerRow({ w, jobCompleted, onChanged }) {
   );
 }
 
-export default function EmployerJobCard({ job, employerId, onChanged }) {
+export default function EmployerJobCard({ job, onChanged }) {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [err, setErr] = useState("");
 
   async function loadWorkers() {
     setLoading(true);
     try {
-      const data = await api("GET", `/api/jobs/${job.id}/workers?employer_id=${employerId}`);
+      const data = await api("GET", `/api/jobs/${job.id}/workers`);
       setWorkers(data.workers);
     } catch (e) {
       setErr(e.message);
@@ -164,7 +196,11 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id, job.status]);
 
-  const next = NEXT_STATUS[job.status];
+  // "เริ่มงาน" only makes sense once at least one worker has accepted —
+  // an 'open' job with 0 accepted workers can't be started (the backend
+  // rejects it too), so hide the button rather than let it show, get
+  // clicked, and 400.
+  const next = job.status === "open" && workers.length === 0 ? null : NEXT_STATUS[job.status];
 
   async function advance() {
     if (!next) return;
@@ -172,7 +208,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     setErr("");
     try {
       await api("POST", `/api/jobs/${job.id}/status`, {
-        employer_id: employerId,
         status: next.status,
       });
       onChanged();
@@ -188,7 +223,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     setErr("");
     try {
       await api("POST", `/api/jobs/${job.id}/status`, {
-        employer_id: employerId,
         status: "cancelled",
       });
       onChanged();
@@ -202,7 +236,6 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
   if (editing) {
     return (
       <JobPostForm
-        employerId={employerId}
         job={job}
         onSaved={() => {
           setEditing(false);
@@ -213,25 +246,40 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
     );
   }
 
+  if (duplicating) {
+    return (
+      <JobPostForm
+        duplicateFrom={job}
+        onPosted={() => {
+          setDuplicating(false);
+          onChanged();
+        }}
+        onCancelEdit={() => setDuplicating(false)}
+      />
+    );
+  }
+
   return (
     <JobCard
       job={job}
       actions={
         <div className="employerJobDetail">
-          {job.status === "open" && (
+          {(job.status === "open" || job.status === "staffed") && (
             <div className="jobCardActions" style={{ marginBottom: 12 }}>
-              <button type="button" className="btnOutlineDark small" onClick={() => setEditing(true)}>
-                แก้ไขงาน
-              </button>
+              {job.status === "open" && (
+                <button type="button" className="btnOutlineDark small" onClick={() => setEditing(true)}>
+                  แก้ไขงาน
+                </button>
+              )}
               <button type="button" className="btnOutlineDark small" disabled={busy} onClick={cancelJob}>
                 ยกเลิกงาน
               </button>
             </div>
           )}
-          {job.status === "staffed" && (
+          {(job.status === "completed" || job.status === "cancelled") && (
             <div className="jobCardActions" style={{ marginBottom: 12 }}>
-              <button type="button" className="btnOutlineDark small" disabled={busy} onClick={cancelJob}>
-                ยกเลิกงาน
+              <button type="button" className="btnOutlinePink small" onClick={() => setDuplicating(true)}>
+                โพสต์งานนี้อีกครั้ง
               </button>
             </div>
           )}
@@ -251,7 +299,7 @@ export default function EmployerJobCard({ job, employerId, onChanged }) {
                 <WorkerRow
                   key={w.id}
                   w={w}
-                  jobCompleted={job.status === "completed"}
+                  jobStatus={job.status}
                   onChanged={() => {
                     loadWorkers();
                     onChanged();

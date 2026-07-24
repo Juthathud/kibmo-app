@@ -15,7 +15,7 @@ export default function ContactInfoStep({ phone, onNext, onSkip }) {
     setSaving(true);
     setErr("");
     try {
-      await patchProfile(phone, {
+      await patchProfile({
         email,
         line_id: lineId,
         phone_visible_on_resume: visibleOnResume ? 1 : 0,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, setAuthToken } from "./api";
 import "./App.css";
 import PhoneLogin from "./components/PhoneLogin";
 import OtpVerify from "./components/OtpVerify";
@@ -49,7 +49,8 @@ export default function App() {
     setOtpMeta(result);
   }
 
-  function handleVerified(verifiedUser) {
+  function handleVerified(verifiedUser, token) {
+    setAuthToken(token);
     if (!verifiedUser.profile_complete) {
       setStep("register");
       return;
@@ -68,7 +69,14 @@ export default function App() {
     setStep("home");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await api("POST", "/api/auth/logout");
+    } catch {
+      // best-effort — proceed with client-side logout even if this fails
+      // (e.g. offline, or the session was already gone)
+    }
+    setAuthToken(null);
     setUser(null);
     setPhone("");
     setOtpMeta(null);
@@ -89,7 +97,7 @@ export default function App() {
     );
   }
   if (step === "register") {
-    return <RegisterProfile phone={phone} onDone={handleRegisterDone} onBack={() => setStep("phone")} />;
+    return <RegisterProfile onDone={handleRegisterDone} onBack={() => setStep("phone")} />;
   }
   if (step === "onboarding") {
     return <OnboardingWizard phone={phone} onComplete={handleOnboardingComplete} />;

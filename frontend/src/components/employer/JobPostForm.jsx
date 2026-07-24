@@ -41,12 +41,18 @@ function formFromJob(job) {
   };
 }
 
-// Used both to post a brand-new job and (when `job`/`onSaved` are given) to
-// edit one that's still 'open' — same fields, submit just switches between
-// POST /api/jobs and PATCH /api/jobs/<id>.
-export default function JobPostForm({ employerId, onPosted, job, onSaved, onCancelEdit }) {
+// Used to post a brand-new job, to edit one that's still 'open' (job/onSaved
+// given), or to re-post an old job under a new date (duplicateFrom given —
+// same fields prefilled except job_date, but still a POST like a fresh job).
+export default function JobPostForm({ onPosted, job, onSaved, onCancelEdit, duplicateFrom }) {
   const isEditing = !!job;
-  const [form, setForm] = useState(isEditing ? formFromJob(job) : initialForm);
+  const isDuplicating = !isEditing && !!duplicateFrom;
+  const initial = isEditing
+    ? formFromJob(job)
+    : isDuplicating
+    ? { ...formFromJob(duplicateFrom), job_date: "" }
+    : initialForm;
+  const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [err, setErr] = useState("");
@@ -81,7 +87,6 @@ export default function JobPostForm({ employerId, onPosted, job, onSaved, onCanc
     setSaving(true);
     setErr("");
     const payload = {
-      employer_id: employerId,
       job_type: form.job_type,
       category: form.category,
       pay_type: form.pay_type,
@@ -114,7 +119,7 @@ export default function JobPostForm({ employerId, onPosted, job, onSaved, onCanc
 
   return (
     <form className="employerCard" onSubmit={submit}>
-      <h3>{isEditing ? "แก้ไขงาน" : "โพสต์งานใหม่"}</h3>
+      <h3>{isEditing ? "แก้ไขงาน" : isDuplicating ? "โพสต์งานซ้ำ" : "โพสต์งานใหม่"}</h3>
 
       <div className="textField">
         <label>ลักษณะงาน</label>
@@ -192,9 +197,9 @@ export default function JobPostForm({ employerId, onPosted, job, onSaved, onCanc
       <p className="err">{err}</p>
       <div className="jobCardActions">
         <button type="submit" className="btnPink" disabled={saving}>
-          {saving ? "กำลังบันทึก..." : isEditing ? "บันทึกการแก้ไข" : "โพสต์งาน"}
+          {saving ? "กำลังบันทึก..." : isEditing ? "บันทึกการแก้ไข" : isDuplicating ? "โพสต์งานนี้" : "โพสต์งาน"}
         </button>
-        {isEditing && (
+        {(isEditing || isDuplicating) && (
           <button type="button" className="btnOutlineDark" onClick={onCancelEdit}>
             ยกเลิก
           </button>

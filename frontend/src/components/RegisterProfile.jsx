@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import AuthBrand from "./AuthBrand";
 
-export default function RegisterProfile({ phone, onDone, onBack }) {
+export default function RegisterProfile({ onDone, onBack }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("worker");
   const [err, setErr] = useState("");
@@ -13,7 +13,7 @@ export default function RegisterProfile({ phone, onDone, onBack }) {
     setErr("");
     setLoading(true);
     try {
-      const result = await api("POST", "/api/auth/register", { phone, name, role });
+      const result = await api("POST", "/api/auth/register", { name, role });
       onDone(result.user);
     } catch (e) {
       setErr(e.message);

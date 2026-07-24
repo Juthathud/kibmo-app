@@ -3,9 +3,10 @@ import re
 import string
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from db import get_db
+from session_auth import create_session, require_auth
 
 bp = Blueprint("auth", __name__)
 
@@ -81,15 +82,19 @@ def verify_otp():
     if not user:
         cur = conn.execute("INSERT INTO users (phone) VALUES (?)", (phone,))
         user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+    if user["account_status"] == "banned":
+        conn.close()
+        return jsonify(error="บัญชีนี้ถูกระงับการใช้งาน"), 403
+    token = create_session(conn, user["id"])
     conn.commit()
     conn.close()
-    return jsonify(ok=True, user=dict(user))
+    return jsonify(ok=True, user=dict(user), token=token)
 
 
 @bp.route("/api/auth/register", methods=["POST"])
+@require_auth
 def complete_profile():
     data = request.get_json(force=True)
-    phone = _normalize_phone(data.get("phone"))
     name = (data.get("name") or "").strip()
     role = data.get("role")
     if role not in ("employer", "worker", "both"):
@@ -98,16 +103,21 @@ def complete_profile():
         return jsonify(error="กรุณากรอกชื่อ"), 400
 
     conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
-    if not user:
-        conn.close()
-        return jsonify(error="ไม่พบเบอร์นี้ กรุณายืนยัน OTP ก่อน"), 404
-
     conn.execute(
-        "UPDATE users SET name = ?, role = ?, profile_complete = 1 WHERE phone = ?",
-        (name, role, phone),
+        "UPDATE users SET name = ?, role = ?, profile_complete = 1 WHERE id = ?",
+        (name, role, g.user["id"]),
     )
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (g.user["id"],)).fetchone()
     conn.close()
     return jsonify(ok=True, user=dict(user))
+
+
+@bp.route("/api/auth/logout", methods=["POST"])
+@require_auth
+def logout():
+    conn = get_db()
+    conn.execute("DELETE FROM sessions WHERE token = ?", (g.token,))
+    conn.commit()
+    conn.close()
+    return jsonify(ok=True)
