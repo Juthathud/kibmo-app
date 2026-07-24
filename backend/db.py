@@ -179,7 +179,7 @@ CREATE TABLE users (
 _JOBS_REBUILD_DDL = """
 CREATE TABLE jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    employer_id INTEGER NOT NULL,
+    employer_id INTEGER NOT NULL REFERENCES users(id),
     job_type TEXT NOT NULL DEFAULT 'labor',
     category TEXT NOT NULL,
     pay_type TEXT NOT NULL DEFAULT 'daily',
